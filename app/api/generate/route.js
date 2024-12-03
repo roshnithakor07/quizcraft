@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const SYSTEM = `You are QuizCraft — an expert educator who creates precise, high-quality multiple-choice quizzes.
+const SYSTEM = (language) => `You are QuizCraft — an expert educator who creates precise, high-quality multiple-choice quizzes.
 
 Generate a quiz ONLY as valid JSON. No markdown, no preamble, no explanation outside the JSON.
+
+IMPORTANT: Generate ALL questions in ${language} language.
 
 Return EXACTLY this structure:
 {
@@ -14,93 +16,125 @@ Return EXACTLY this structure:
   "questions": [
     {
       "id": 1,
-      "question": "Clear, unambiguous question text?",
-      "options": {
-        "A": "First option",
-        "B": "Second option",
-        "C": "Third option",
-        "D": "Fourth option"
-      },
+      "question": "Clear question text in ${language}?",
+      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
       "answer": "B",
-      "explanation": "Brief explanation of why B is correct and why others are wrong."
+      "explanation": "Brief explanation in ${language} of why B is correct."
     }
   ]
 }
 
 Rules:
-- Always produce exactly the number of questions requested
+- Generate exactly the number of questions requested, no more, no less
 - Answer must be exactly one of: "A", "B", "C", "D"
-- All 4 options must be plausible, no obviously wrong answers
-- Easy: factual recall from the text
-- Medium: comprehension and inference
-- Hard: analysis, application, and critical thinking
-- Explanations must be concise (1-2 sentences max)
+- All 4 options must be plausible — no obviously wrong answers
+- Easy: factual recall | Medium: comprehension & inference | Hard: analysis & critical thinking
+- Explanations must be concise (1–2 sentences)
 - Never repeat questions
-- Questions must be directly based on provided content`;
+- Questions must be based on the provided content
+- Write everything (questions, options, explanations) in ${language}`;
+
+async function generateBatch(text, count, difficulty, language, startId = 1) {
+  const prompt = `Generate exactly ${count} ${difficulty}-level multiple choice questions (IDs starting from ${startId}) from the content below.
+Return ONLY valid JSON, no markdown.
+
+Content:
+${text}`;
+
+  const message = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.3,
+    max_tokens: 4096,
+    messages: [
+      { role: "system", content: SYSTEM(language) },
+      { role: "user",   content: prompt },
+    ],
+  });
+
+  const raw   = message.choices[0].message.content.trim();
+  const clean = raw.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
+
+  // Extract JSON robustly
+  let parsed;
+  try { parsed = JSON.parse(clean); } catch {
+    const s = clean.indexOf("{"), e = clean.lastIndexOf("}");
+    if (s !== -1 && e !== -1) parsed = JSON.parse(clean.slice(s, e + 1));
+  }
+  return parsed;
+}
 
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const { text, imageBase64, count, difficulty } = body;
-
-    // ── Validation ──────────────────────────────────────────────
-    if (!text && !imageBase64) {
-      return NextResponse.json({ error: "Provide text or an image." }, { status: 400 });
+    let body;
+    try { body = await request.json(); } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    // Image tab with no text — Groq doesn't support vision
-    if (imageBase64 && !text) {
-      return NextResponse.json({
-        error: "Image analysis is not supported with the free Groq API. Please switch to the Text tab and paste your content instead."
-      }, { status: 400 });
+    const { text, count = 10, difficulty = "medium", language = "English" } = body;
+
+    if (!text || text.trim().length < 20) {
+      return NextResponse.json({ error: "Please provide more content to generate questions from." }, { status: 400 });
+    }
+    if (count < 1 || count > 200) {
+      return NextResponse.json({ error: "Question count must be between 1 and 200." }, { status: 400 });
     }
 
-    if (text && text.trim().length < 20) {
-      return NextResponse.json({ error: "Text too short to generate meaningful questions." }, { status: 400 });
+    // ── Batch if > 50 questions ──────────────────────────────────
+    const BATCH_SIZE = 40; // safe limit per call
+    let allQuestions = [];
+    let quizTitle    = "";
+    let quizTopic    = "";
+
+    if (count <= BATCH_SIZE) {
+      const result = await generateBatch(text, count, difficulty, language, 1);
+      if (!result?.questions) {
+        return NextResponse.json({ error: "Could not parse quiz. Please try again." }, { status: 500 });
+      }
+      allQuestions = result.questions;
+      quizTitle    = result.title || "Quiz";
+      quizTopic    = result.topic || "";
+    } else {
+      // Multiple batches
+      const batches  = [];
+      let remaining  = count;
+      let startId    = 1;
+      while (remaining > 0) {
+        const batchCount = Math.min(BATCH_SIZE, remaining);
+        batches.push({ count: batchCount, startId });
+        startId   += batchCount;
+        remaining -= batchCount;
+      }
+
+      // Run batches sequentially to avoid rate limits
+      for (const b of batches) {
+        const result = await generateBatch(text, b.count, difficulty, language, b.startId);
+        if (!result?.questions) continue;
+        if (!quizTitle) { quizTitle = result.title || "Quiz"; quizTopic = result.topic || ""; }
+        // Fix IDs to be sequential
+        const fixed = result.questions.map((q, i) => ({ ...q, id: b.startId + i }));
+        allQuestions.push(...fixed);
+      }
     }
 
-    const prompt = `Generate ${count} ${difficulty}-level multiple choice questions from the content below.\n\nReturn ONLY valid JSON, no markdown.\n\nContent:\n${text}`;
+    if (allQuestions.length === 0) {
+      return NextResponse.json({ error: "Failed to generate questions. Please try again." }, { status: 500 });
+    }
 
-    const message = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      temperature: 0.3,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user",   content: prompt },
-      ],
+    return NextResponse.json({
+      success: true,
+      quiz: {
+        title:     quizTitle,
+        topic:     quizTopic,
+        language,
+        questions: allQuestions,
+      },
     });
 
-    const raw   = message.choices[0].message.content.trim();
-    const clean = raw.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
-
-    let quiz;
-    try {
-      quiz = JSON.parse(clean);
-    } catch {
-      return NextResponse.json(
-        { error: "Could not parse quiz. Please try again." },
-        { status: 500 }
-      );
-    }
-
-    if (!quiz.questions || !Array.isArray(quiz.questions)) {
-      return NextResponse.json({ error: "Invalid quiz format returned." }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, quiz });
   } catch (err) {
-    console.error("Quiz generation error:", err);
-
+    console.error("Generate error:", err);
     if (err?.status === 429) {
-      return NextResponse.json(
-        { error: "Rate limit hit. Please wait a moment and try again." },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: "Rate limit hit. Please wait a moment and try again." }, { status: 429 });
     }
-
-    return NextResponse.json(
-      { error: "Generation failed. Try again." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Generation failed. Try again." }, { status: 500 });
   }
 }
