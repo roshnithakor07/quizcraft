@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink:    #1a1208;
+  --paper:  #faf6ef;
+  --cream:  #f0e9db;
+  --warm:   #e8dcc8;
+  --amber:  #d97706;
+  --ember:  #c2410c;
+  --sage:   #4d7c5f;
+  --muted:  #8a7a65;
+  --border: #d9ceba;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+
+/* Paper texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Thin horizontal rule lines */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 47px,
+    rgba(26,18,8,0.04) 47px,
+    rgba(26,18,8,0.04) 48px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Textarea styling */
+textarea {
+  font-family: 'DM Sans', sans-serif;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s;
+}
+textarea:focus { border-color: var(--amber) !important; }
+
+/* Answer option button states */
+.option-btn {
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--paper);
+}
+.option-btn:hover:not(:disabled) {
+  border-color: var(--amber);
+  background: #fffbf4;
+  transform: translateX(4px);
+}
+.option-btn.selected   { border-color: var(--amber); background: #fef3c7; }
+.option-btn.correct    { border-color: var(--sage);  background: #ecfdf5; animation: correct 0.3s ease-out; }
+.option-btn.wrong      { border-color: var(--ember); background: #fff1ee; animation: shake   0.4s ease-out; }
+.option-btn.reveal     { border-color: var(--sage);  background: #ecfdf5; }
+
+/* Staggered reveal */
+.stagger > * { animation: rise 0.4s ease-out both; }
+.stagger > *:nth-child(1)  { animation-delay: 0.05s; }
+.stagger > *:nth-child(2)  { animation-delay: 0.10s; }
+.stagger > *:nth-child(3)  { animation-delay: 0.15s; }
+.stagger > *:nth-child(4)  { animation-delay: 0.20s; }
+.stagger > *:nth-child(5)  { animation-delay: 0.25s; }
+.stagger > *:nth-child(6)  { animation-delay: 0.30s; }
+.stagger > *:nth-child(7)  { animation-delay: 0.35s; }
+.stagger > *:nth-child(8)  { animation-delay: 0.40s; }
+.stagger > *:nth-child(9)  { animation-delay: 0.45s; }
+.stagger > *:nth-child(10) { animation-delay: 0.50s; }
+
+/* Progress bar */
+.progress-track { background: var(--warm); border-radius: 99px; overflow: hidden; }
+.progress-fill  {
+  background: linear-gradient(90deg, var(--amber), var(--ember));
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed var(--border);
+  transition: all 0.2s;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--amber);
+  background: #fffbf4;
+}
+
+/* Tag pill */
+.tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
