@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Groq from "groq-sdk";
 import { NextResponse } from "next/server";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const SYSTEM = `You are QuizCraft — an expert educator who creates precise, high-quality multiple-choice quizzes.
 
@@ -41,44 +41,34 @@ Rules:
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { text, imageBase64, imageMediaType, count, difficulty } = body;
+    const { text, count, difficulty } = body;
 
-    if (!text && !imageBase64) {
-      return NextResponse.json({ error: "Provide text or an image." }, { status: 400 });
+    if (!text) {
+      return NextResponse.json({ error: "Provide text content." }, { status: 400 });
     }
 
-    // Build user message content
-    const prompt = `Generate ${count} ${difficulty}-level multiple choice questions from the content below.\n\nReturn ONLY valid JSON.`;
+    const prompt = `Generate ${count} ${difficulty}-level multiple choice questions from the content below.\n\nReturn ONLY valid JSON, no markdown.\n\nContent:\n${text}`;
 
-    let content;
-
-    if (imageBase64) {
-      content = [
-        {
-          type: "image",
-          source: { type: "base64", media_type: imageMediaType || "image/jpeg", data: imageBase64 },
-        },
-        { type: "text", text: text ? `${prompt}\n\nAdditional context:\n${text}` : prompt },
-      ];
-    } else {
-      content = [{ type: "text", text: `${prompt}\n\nContent:\n${text}` }];
-    }
-
-    const message = await client.messages.create({
-      model: "claude-opus-4-5",
-      max_tokens: 4096,
-      system: SYSTEM,
-      messages: [{ role: "user", content }],
+    const message = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.3,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user",   content: prompt },
+      ],
     });
 
-    const raw   = message.content[0].text.trim();
+    const raw   = message.choices[0].message.content.trim();
     const clean = raw.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
 
     let quiz;
     try {
       quiz = JSON.parse(clean);
     } catch {
-      return NextResponse.json({ error: "Could not parse quiz. Please try again." }, { status: 500 });
+      return NextResponse.json(
+        { error: "Could not parse quiz. Please try again." },
+        { status: 500 }
+      );
     }
 
     if (!quiz.questions || !Array.isArray(quiz.questions)) {
@@ -86,9 +76,19 @@ export async function POST(request) {
     }
 
     return NextResponse.json({ success: true, quiz });
-  } catch (err) {
-    console.error(err);
-    if (err.status === 401) return NextResponse.json({ error: "Invalid API key." }, { status: 401 });
-    return NextResponse.json({ error: "Generation failed. Try again." }, { status: 500 });
+  } catch (error) {
+    console.error("Quiz generation error:", error);
+
+    if (error?.status === 429) {
+      return NextResponse.json(
+        { error: "Rate limit hit. Please wait a moment and try again." },
+        { status: 429 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Generation failed. Try again." },
+      { status: 500 }
+    );
   }
 }

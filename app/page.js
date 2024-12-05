@@ -512,7 +512,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-12 pt-6 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--muted)]">
-          <span>QuizCraft · Built with Next.js + Claude API</span>
+          <span>QuizCraft · Built with Next.js + Groq API</span>
           <div className="flex items-center gap-3">
             <a href="https://github.com/roshnithakor07/quizcraft" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[var(--ink)] transition-colors">
               <Icons.GitHub /> GitHub
