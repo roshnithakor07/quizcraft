@@ -416,6 +416,9 @@ function QuizScreen({ quiz, onFinish }) {
 // ── Main Page ─────────────────────────────────────────────────────
 export default function Home() {
   const [text,         setText]         = useState("");
+  const [tab,          setTab]          = useState("text"); // text | image
+  const [image,        setImage]        = useState(null);   // { base64, mediaType, preview, name }
+  const [dragOver,     setDragOver]     = useState(false);
   const [difficulties, setDifficulties] = useState(["medium"]);
   const [count,        setCount]        = useState(10);
   const [useCustom,    setUseCustom]    = useState(false);
@@ -425,11 +428,26 @@ export default function Home() {
   const [loadingMsg,   setLoadingMsg]   = useState("");
   const [error,        setError]        = useState(null);
   const [quiz,         setQuiz]         = useState(null);
-  const [screen,       setScreen]       = useState("input"); // input | quiz | results
+  const [screen,       setScreen]       = useState("input");
   const [finalAns,     setFinalAns]     = useState({});
   const [shareId,      setShareId]      = useState(null);
   const [sharing,      setSharing]      = useState(false);
   const [showShare,    setShowShare]    = useState(false);
+
+  const fileRef = useRef(null);
+
+  const handleFile = useCallback((file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      setImage({ base64: dataUrl.split(",")[1], mediaType: file.type, preview: dataUrl, name: file.name });
+      setError(null);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const onDrop = (e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]); };
 
   const toggleDifficulty = (val) => {
     setDifficulties(prev=>
@@ -447,8 +465,11 @@ export default function Home() {
   // ── Generate ───────────────────────────────────────────────────
   const generate = async () => {
     if (loading) return;
-    if (!text.trim())              { setError("Please paste some text first."); return; }
-    if (text.trim().length < 50)   { setError("Text too short — paste at least 50 characters."); return; }
+    if (tab === "text") {
+      if (!text.trim())            { setError("Please paste some text first."); return; }
+      if (text.trim().length < 50) { setError("Text too short — paste at least 50 characters."); return; }
+    }
+    if (tab === "image" && !image) { setError("Please upload an image first."); return; }
     if (useCustom && (!customCount || parseInt(customCount)<1 || parseInt(customCount)>200)) {
       setError("Custom count must be between 1 and 200."); return;
     }
@@ -462,7 +483,12 @@ export default function Home() {
     try {
       const res  = await fetch("/api/generate", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ text, count:finalCount, difficulty:difficulties.join(", "), language }),
+        body: JSON.stringify({
+          text:           tab === "text" ? text : "",
+          imageBase64:    tab === "image" ? image.base64     : undefined,
+          imageMediaType: tab === "image" ? image.mediaType  : undefined,
+          count: finalCount, difficulty: difficulties.join(", "), language,
+        }),
       });
       const data = await res.json();
       if (!res.ok||!data.success) throw new Error(data.error||"Failed");
@@ -508,40 +534,90 @@ export default function Home() {
         </div>
 
         <div className="card space-y-6">
-          {/* Text input */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Your Content</label>
-              {text && (
-                <button onClick={() => { setText(""); setError(null); }}
-                  className="text-[10px] text-ember hover:underline flex items-center gap-1">
-                  <Icons.X/> Clear
-                </button>
+
+          {/* ── Tab toggle ── */}
+          <div className="flex gap-1 bg-[var(--cream)] border border-[var(--border)] rounded-xl p-1">
+            <button onClick={()=>{setTab("text");setError(null);}}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${tab==="text"?"bg-[var(--paper)] text-[var(--ink)] shadow-sm border border-[var(--border)]":"text-[var(--muted)] hover:text-[var(--ink)]"}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+              Text / Notes
+            </button>
+            <button onClick={()=>{setTab("image");setError(null);}}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${tab==="image"?"bg-[var(--paper)] text-[var(--ink)] shadow-sm border border-[var(--border)]":"text-[var(--muted)] hover:text-[var(--ink)]"}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Image / Photo
+            </button>
+          </div>
+
+          {/* ── TEXT TAB ── */}
+          {tab==="text" && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Your Content</label>
+                {text && (
+                  <button onClick={()=>{setText("");setError(null);}}
+                    className="text-[10px] text-ember hover:underline flex items-center gap-1">
+                    <Icons.X/> Clear
+                  </button>
+                )}
+              </div>
+              {/* Sample topics */}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[
+                  { label:"🌌 Black Holes",      text:"A black hole is a region of spacetime where gravity is so strong that nothing, not even light or other electromagnetic waves, has enough speed to escape it. The boundary of no escape is called the event horizon. Black holes form when massive stars collapse at the end of their life cycle. Stephen Hawking predicted that black holes emit radiation due to quantum effects near the event horizon, now known as Hawking radiation. Supermassive black holes are found at the center of most galaxies, including our Milky Way." },
+                  { label:"🐍 Python Basics",    text:"Python is a high-level, interpreted programming language known for its simplicity and readability. It uses indentation to define code blocks. Python supports multiple programming paradigms including procedural, object-oriented, and functional programming. Key features include dynamic typing, automatic memory management, and a vast standard library. Python uses lists, tuples, dictionaries, and sets as core data structures. Functions are defined with the def keyword. Classes are defined with the class keyword and support inheritance." },
+                  { label:"⚔️ World War II",     text:"World War II lasted from 1939 to 1945 and involved most of the world's nations. It was sparked by Nazi Germany's invasion of Poland. The Allied Powers included Britain, France, the Soviet Union, and the United States, while the Axis Powers included Germany, Italy, and Japan. Key events include the Battle of Britain, the siege of Stalingrad, D-Day on June 6 1944, and the dropping of atomic bombs on Hiroshima and Nagasaki. The war ended with Germany's surrender in May 1945 and Japan's surrender in September 1945." },
+                  { label:"🌿 Photosynthesis",   text:"Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to produce oxygen and energy in the form of glucose. It occurs in the chloroplasts using chlorophyll. The light-dependent reactions occur in the thylakoid membranes and produce ATP and NADPH. The Calvin cycle occurs in the stroma and uses ATP and NADPH to fix carbon dioxide into glucose. The overall equation is: 6CO2 + 6H2O + light energy produces C6H12O6 + 6O2." },
+                  { label:"🤖 Machine Learning", text:"Machine learning is a subset of artificial intelligence where systems learn from data without being explicitly programmed. Types include supervised learning where labeled data is used, unsupervised learning where patterns are found in unlabeled data, and reinforcement learning where agents learn through rewards. Key algorithms include linear regression, decision trees, random forests, support vector machines, and neural networks. Overfitting occurs when a model performs well on training data but poorly on new data. Cross-validation helps evaluate model performance." },
+                ].map(s=>(
+                  <button key={s.label} onClick={()=>{setText(s.text);setError(null);}}
+                    className="text-[11px] px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] hover:bg-[var(--cream)] transition-all">
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              <textarea value={text} onChange={e=>{setText(e.target.value);setError(null);}} rows={6}
+                placeholder="Paste your notes, textbook excerpt, article, or any text here… or click a sample above ↑"
+                className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--ink)] bg-[var(--paper)] outline-none focus:border-[var(--amber)] placeholder-[var(--muted)]/40 resize-y leading-relaxed transition-colors min-h-[120px]"/>
+              <p className="text-[10px] text-[var(--muted)] mt-1">{text.length} chars</p>
+            </div>
+          )}
+
+          {/* ── IMAGE TAB ── */}
+          {tab==="image" && (
+            <div>
+              <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2 block">Upload Image</label>
+
+              {/* Info banner */}
+              <div className="flex items-start gap-3 bg-[var(--cream)] border border-[var(--border)] rounded-xl px-4 py-3 mb-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4 text-[var(--muted)] shrink-0 mt-0.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <p className="text-xs text-[var(--muted)] leading-relaxed">
+                  Upload a textbook page, notes, or slide — we'll read the text and generate your quiz.
+                  <span className="text-[var(--ink)] font-medium"> Best with clear, readable text.</span>
+                </p>
+              </div>
+
+              {/* Upload zone */}
+              {!image ? (
+                <div onDrop={onDrop} onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)}
+                  onClick={()=>fileRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragOver?"border-[var(--amber)] bg-amber-50":"border-[var(--border)] hover:border-[var(--amber)] hover:bg-[var(--cream)]"}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 mx-auto mb-3 text-[var(--muted)]"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                  <p className="text-sm font-medium text-[var(--ink)] mb-1">Drop image here or click to browse</p>
+                  <p className="text-xs text-[var(--muted)]">JPG, PNG, WEBP — textbooks, notes, slides</p>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e=>handleFile(e.target.files[0])}/>
+                </div>
+              ) : (
+                <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+                  <img src={image.preview} alt="uploaded" className="w-full max-h-48 object-cover"/>
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-[var(--cream)]">
+                    <span className="text-xs text-[var(--muted)] truncate">{image.name}</span>
+                    <button onClick={()=>{setImage(null);setError(null);}} className="text-xs text-ember hover:underline shrink-0 ml-2">Remove</button>
+                  </div>
+                </div>
               )}
             </div>
-            {/* Sample topics */}
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {[
-                { label:"🌌 Black Holes",      text:"A black hole is a region of spacetime where gravity is so strong that nothing, not even light or other electromagnetic waves, has enough speed to escape it. The boundary of no escape is called the event horizon. Black holes form when massive stars collapse at the end of their life cycle. Stephen Hawking predicted that black holes emit radiation due to quantum effects near the event horizon, now known as Hawking radiation. Supermassive black holes are found at the center of most galaxies, including our Milky Way." },
-                { label:"🐍 Python Basics",    text:"Python is a high-level, interpreted programming language known for its simplicity and readability. It uses indentation to define code blocks. Python supports multiple programming paradigms including procedural, object-oriented, and functional programming. Key features include dynamic typing, automatic memory management, and a vast standard library. Python uses lists, tuples, dictionaries, and sets as core data structures. Functions are defined with the def keyword. Classes are defined with the class keyword and support inheritance." },
-                { label:"⚔️ World War II",     text:"World War II lasted from 1939 to 1945 and involved most of the world's nations. It was sparked by Nazi Germany's invasion of Poland. The Allied Powers included Britain, France, the Soviet Union, and the United States, while the Axis Powers included Germany, Italy, and Japan. Key events include the Battle of Britain, the siege of Stalingrad, D-Day on June 6 1944, and the dropping of atomic bombs on Hiroshima and Nagasaki. The war ended with Germany's surrender in May 1945 and Japan's surrender in September 1945." },
-                { label:"🌿 Photosynthesis",   text:"Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to produce oxygen and energy in the form of glucose. It occurs in the chloroplasts using chlorophyll. The light-dependent reactions occur in the thylakoid membranes and produce ATP and NADPH. The Calvin cycle occurs in the stroma and uses ATP and NADPH to fix carbon dioxide into glucose. The overall equation is: 6CO2 + 6H2O + light energy produces C6H12O6 + 6O2." },
-                { label:"🤖 Machine Learning", text:"Machine learning is a subset of artificial intelligence where systems learn from data without being explicitly programmed. Types include supervised learning where labeled data is used, unsupervised learning where patterns are found in unlabeled data, and reinforcement learning where agents learn through rewards. Key algorithms include linear regression, decision trees, random forests, support vector machines, and neural networks. Overfitting occurs when a model performs well on training data but poorly on new data. Cross-validation helps evaluate model performance." },
-              ].map(s => (
-                <button key={s.label} onClick={() => { setText(s.text); setError(null); }}
-                  className="text-[11px] px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] hover:bg-[var(--cream)] transition-all">
-                  {s.label}
-                </button>
-              ))}
-            </div>
-            <textarea
-              value={text} onChange={e=>{setText(e.target.value);setError(null);}}
-              rows={6}
-              placeholder="Paste your notes, textbook excerpt, article, or any text here… or click a sample above ↑"
-              className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--ink)] bg-[var(--paper)] outline-none focus:border-[var(--amber)] placeholder-[var(--muted)]/40 resize-y leading-relaxed transition-colors min-h-[120px]"
-            />
-            <p className="text-[10px] text-[var(--muted)] mt-1">{text.length} chars</p>
-          </div>
+          )}
 
           {/* Language */}
           <div>

@@ -70,7 +70,21 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    const { text, count = 10, difficulty = "medium", language = "English" } = body;
+    let { text, imageBase64, imageMediaType, count = 10, difficulty = "medium", language = "English" } = body;
+
+    // ── Image mode: extract text using Groq with a text-only prompt ──
+    // Groq doesn't support vision, so we ask it to describe what text
+    // would typically appear in such a context, or user passes imageBase64
+    // and we tell them to use Claude/OpenAI. For now: if image+no text,
+    // use Groq to generate from a placeholder noting the limitation.
+    if (imageBase64 && !text) {
+      // Try to extract using tesseract.js on client side isn't viable here.
+      // Best approach: tell the user clearly and use the image name/type as hint.
+      // If they have OpenAI key configured, we could use it — for now return helpful error.
+      return NextResponse.json({
+        error: "Image analysis requires a vision-capable AI. Please copy the text from your image and paste it in the Text tab, or configure an OpenAI/Claude API key in your .env.local to enable image support."
+      }, { status: 400 });
+    }
 
     if (!text || text.trim().length < 20) {
       return NextResponse.json({ error: "Please provide more content to generate questions from." }, { status: 400 });
