@@ -1,34 +1,36 @@
 import { NextResponse } from "next/server";
 import { getDb } from "../../../lib/mongodb";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../lib/auth";
 
-// nanoid v5 is ESM-only — use built-in crypto instead
 function generateId() {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 10);
 }
 
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const session = await getServerSession(authOptions);
+    const body    = await request.json();
     const { quiz } = body;
 
     if (!quiz?.questions?.length) {
       return NextResponse.json({ error: "Invalid quiz data." }, { status: 400 });
     }
 
-    const db = await getDb();
+    const db      = await getDb();
     const shareId = generateId();
 
-    const doc = {
+    await db.collection("quizzes").insertOne({
       shareId,
-      title:     quiz.title     || "Untitled Quiz",
-      topic:     quiz.topic     || "",
-      language:  quiz.language  || "English",
-      questions: quiz.questions,
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    };
-
-    await db.collection("quizzes").insertOne(doc);
+      creatorId:   session?.user?.id   || null,
+      creatorName: session?.user?.name || null,
+      title:       quiz.title    || "Untitled Quiz",
+      topic:       quiz.topic    || "",
+      language:    quiz.language || "English",
+      questions:   quiz.questions,
+      createdAt:   new Date(),
+      expiresAt:   new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
 
     return NextResponse.json({ success: true, shareId });
   } catch (err) {
