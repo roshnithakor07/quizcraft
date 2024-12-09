@@ -11,8 +11,9 @@ function scoreColor(pct) {
 }
 
 export default function DashboardClient({ quizzes, user }) {
-  const [deleting, setDeleting] = useState(null);
-  const [list,     setList]     = useState(quizzes);
+  const [deleting,   setDeleting]   = useState(null);
+  const [list,       setList]       = useState(quizzes);
+  const [copiedId,   setCopiedId]   = useState(null);
 
   const handleDelete = async (shareId) => {
     if (!confirm("Delete this quiz? This cannot be undone.")) return;
@@ -26,6 +27,8 @@ export default function DashboardClient({ quizzes, user }) {
 
   const copy = (shareId) => {
     navigator.clipboard.writeText(`${window.location.origin}/quiz/${shareId}`);
+    setCopiedId(shareId);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -118,8 +121,12 @@ export default function DashboardClient({ quizzes, user }) {
                         Results ({quiz.responses.count})
                       </Link>
                       <button onClick={() => copy(quiz.shareId)}
-                        className="text-xs px-3 py-1.5 border border-[var(--border)] rounded-lg text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] transition-all">
-                        Copy link
+                        className={`text-xs px-3 py-1.5 border rounded-lg transition-all ${
+                          copiedId === quiz.shareId
+                            ? "border-sage/40 bg-sage/10 text-sage"
+                            : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)]"
+                        }`}>
+                        {copiedId === quiz.shareId ? "✓ Copied!" : "Copy link"}
                       </button>
                       <button onClick={() => handleDelete(quiz.shareId)} disabled={deleting === quiz.shareId}
                         className="ml-auto text-xs px-3 py-1.5 border border-[var(--border)] rounded-lg text-[var(--muted)] hover:border-red-300 hover:text-red-500 transition-all disabled:opacity-40">
