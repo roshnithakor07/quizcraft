@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function RegisterPage() {
-  const router   = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  const hasPending   = searchParams.get("pending") === "quiz";
+
   const [name,     setName]     = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
+
+  // If already logged in, go home
+  useEffect(() => {
+    if (session?.user) router.push("/");
+  }, [session]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,6 +37,7 @@ export default function RegisterPage() {
       // Auto sign in after register
       const signInRes = await signIn("credentials", { email, password, redirect: false });
       if (signInRes?.error) { router.push("/login"); return; }
+      // Go home — useEffect in page.js will pick up pendingQuiz from sessionStorage
       router.push("/");
       router.refresh();
     } catch {
@@ -48,7 +58,15 @@ export default function RegisterPage() {
             <span className="font-serif text-2xl font-bold text-[var(--ink)]">QuizCraft</span>
           </div>
           <h1 className="font-serif text-xl font-semibold text-[var(--ink)] mb-1">Create your account</h1>
-          <p className="text-sm text-[var(--muted)]">Free forever · No credit card needed</p>
+
+          {hasPending ? (
+            <div className="flex items-center justify-center gap-1.5 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 shrink-0"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Sign up to save your quiz
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">Free forever · No credit card needed</p>
+          )}
         </div>
 
         <div className="card space-y-4">
@@ -73,24 +91,22 @@ export default function RegisterPage() {
             </div>
 
             {error && (
-              <div className="bg-ember/10 border border-ember/30 text-ember text-sm px-4 py-3 rounded-xl">
-                {error}
-              </div>
+              <div className="bg-ember/10 border border-ember/30 text-ember text-sm px-4 py-3 rounded-xl">{error}</div>
             )}
 
             <button type="submit" disabled={loading}
               className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
-                loading
-                  ? "bg-[var(--warm)] text-[var(--muted)] cursor-not-allowed"
-                  : "bg-[var(--ink)] text-[var(--paper)] hover:bg-[#2d2010] active:scale-[0.99]"
+                loading ? "bg-[var(--warm)] text-[var(--muted)] cursor-not-allowed"
+                        : "bg-[var(--ink)] text-[var(--paper)] hover:bg-[#2d2010] active:scale-[0.99]"
               }`}>
-              {loading ? "Creating account…" : "Create account"}
+              {loading ? "Creating account…" : hasPending ? "Create account & save quiz" : "Create account"}
             </button>
           </form>
 
           <p className="text-xs text-center text-[var(--muted)] pt-2 border-t border-[var(--border)]">
             Already have an account?{" "}
-            <Link href="/login" className="text-[var(--amber)] hover:underline font-medium">
+            <Link href={hasPending ? "/login?pending=quiz" : "/login"}
+              className="text-[var(--amber)] hover:underline font-medium">
               Sign in
             </Link>
           </p>

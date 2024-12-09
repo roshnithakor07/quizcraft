@@ -418,6 +418,32 @@ function QuizScreen({ quiz, onFinish }) {
 // ── Main Page ─────────────────────────────────────────────────────
 export default function Home() {
   const { data: session } = useSession();
+
+  // ── Restore pending quiz after login ──────────────────────────
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    try {
+      const pending = sessionStorage.getItem("pendingQuiz");
+      if (!pending) return;
+      sessionStorage.removeItem("pendingQuiz");
+      const pendingQuiz = JSON.parse(pending);
+      // Save it to DB under their account
+      fetch("/api/quiz", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quiz: pendingQuiz }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            setQuiz(pendingQuiz);
+            setShareId(data.shareId);
+            setAutoSaved(true);
+            setScreen("quiz");
+          }
+        })
+        .catch(console.error);
+    } catch {}
+  }, [session?.user?.id]);
   const [text,         setText]         = useState("");
   const [tab,          setTab]          = useState("text"); // text | image
   const [image,        setImage]        = useState(null);   // { base64, mediaType, preview, name }
@@ -436,6 +462,7 @@ export default function Home() {
   const [shareId,      setShareId]      = useState(null);
   const [sharing,      setSharing]      = useState(false);
   const [showShare,    setShowShare]    = useState(false);
+  const [autoSaved,    setAutoSaved]    = useState(false); // tracks if quiz was auto-saved
 
   const fileRef = useRef(null);
 
@@ -495,9 +522,30 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok||!data.success) throw new Error(data.error||"Failed");
-      setQuiz(data.quiz);
+
+      const generatedQuiz = data.quiz;
+      setQuiz(generatedQuiz);
       setScreen("quiz");
       setShareId(null);
+      setAutoSaved(false);
+
+      // ── Auto-save ONLY if logged in ──────────────────────────────
+      if (session) {
+        try {
+          const saveRes  = await fetch("/api/quiz", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quiz: generatedQuiz }),
+          });
+          const saveData = await saveRes.json();
+          if (saveData.success) {
+            setShareId(saveData.shareId);
+            setAutoSaved(true);
+          }
+        } catch (saveErr) {
+          console.error("Auto-save failed:", saveErr);
+        }
+      }
+      // Guest → quiz lives in memory only, banner will warn them
     } catch(e) { setError(e.message); }
     finally { setLoading(false); setLoadingMsg(""); }
   };
@@ -505,13 +553,18 @@ export default function Home() {
   // ── Share ──────────────────────────────────────────────────────
   const handleShare = async () => {
     if (!quiz) return;
+
+    // Already saved → just open modal
+    if (shareId) { setShowShare(true); return; }
+
+    // Guest → store quiz in sessionStorage, redirect to login
     if (!session) {
-      // Save quiz to sessionStorage so we can restore after login
-      sessionStorage.setItem("pendingQuiz", JSON.stringify(quiz));
-      window.location.href = "/login?next=share";
+      try { sessionStorage.setItem("pendingQuiz", JSON.stringify(quiz)); } catch {}
+      window.location.href = "/login?pending=quiz";
       return;
     }
-    if (shareId) { setShowShare(true); return; }
+
+    // Logged in but not saved yet (fallback)
     setSharing(true);
     try {
       const res  = await fetch("/api/quiz", {
@@ -521,6 +574,7 @@ export default function Home() {
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
       setShareId(data.shareId);
+      setAutoSaved(true);
       setShowShare(true);
     } catch(e) { alert("Failed to save quiz: " + e.message); }
     finally { setSharing(false); }
@@ -528,7 +582,7 @@ export default function Home() {
 
   const handleFinish  = (ans) => { setFinalAns(ans); setScreen("results"); };
   const handleRetry   = ()    => { setFinalAns({}); setScreen("quiz"); };
-  const handleNew     = ()    => { setQuiz(null); setScreen("input"); setShareId(null); };
+  const handleNew     = ()    => { setQuiz(null); setScreen("input"); setShareId(null); setAutoSaved(false); };
 
   // ── Input screen ───────────────────────────────────────────────
   if (screen==="input") return (
@@ -751,16 +805,36 @@ export default function Home() {
   if (screen==="quiz") return (
     <div className="min-h-screen relative z-10">
       <div className="max-w-2xl mx-auto px-4 py-10">
+
+        {/* Guest warning banner */}
+        {!session && (
+          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-amber-500 shrink-0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                <span className="font-semibold">This quiz will be lost if you close this tab.</span>{" "}
+                Sign in to save it to your account permanently.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                try { sessionStorage.setItem("pendingQuiz", JSON.stringify(quiz)); } catch {}
+                window.location.href = "/login?pending=quiz";
+              }}
+              className="text-xs font-semibold text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-all shrink-0 whitespace-nowrap">
+              Save my quiz
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-serif text-2xl font-bold text-[var(--ink)]">QuizCraft</h1>
           <div className="flex items-center gap-2">
-            {/* Export */}
             <ExportDropdown quiz={quiz}/>
-            {/* Share */}
             <button onClick={handleShare} disabled={sharing}
               className="flex items-center gap-1.5 text-xs text-[var(--amber)] border border-[var(--amber)]/40 bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-all">
               {sharing ? <Icons.Loader/> : <Icons.Share/>}
-              {sharing ? "Saving…" : session ? "Share" : "Share (sign in)"}
+              {sharing ? "Saving…" : "Share"}
             </button>
             <button onClick={handleNew} className="text-xs text-[var(--muted)] border border-[var(--border)] px-3 py-1.5 rounded-lg hover:border-[var(--amber)] transition-all">
               ← New quiz
@@ -777,13 +851,35 @@ export default function Home() {
   return (
     <div className="min-h-screen relative z-10">
       <div className="max-w-2xl mx-auto px-4 py-10">
+
+        {/* Guest warning banner */}
+        {!session && (
+          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-amber-500 shrink-0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                <span className="font-semibold">Your quiz will be lost when you close this tab.</span>{" "}
+                Create a free account to save quizzes, share them, and track responses.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                try { sessionStorage.setItem("pendingQuiz", JSON.stringify(quiz)); } catch {}
+                window.location.href = "/register?pending=quiz";
+              }}
+              className="text-xs font-semibold text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-all shrink-0 whitespace-nowrap">
+              Save free
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-serif text-2xl font-bold text-[var(--ink)]">QuizCraft</h1>
           <div className="flex items-center gap-2">
             <button onClick={handleShare} disabled={sharing}
               className="flex items-center gap-1.5 text-xs text-[var(--amber)] border border-[var(--amber)]/40 bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-all">
               {sharing?<Icons.Loader/>:<Icons.Share/>}
-              {sharing ? "Saving…" : session ? "Share quiz" : "Share (sign in)"}
+              {sharing ? "Saving…" : "Share quiz"}
             </button>
           </div>
         </div>
