@@ -1,0 +1,12 @@
+{
+  "name": "QuizCraft — AI Quiz Generator",
+  "short_name": "QuizCraft",
+  "description": "Generate quizzes from any text using AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf9f6",
+  "theme_color": "#d97706",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
