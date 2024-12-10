@@ -20,15 +20,15 @@ Rules:
 - Write everything in ${language}
 - NO trailing commas, NO comments, NO extra text outside JSON`;
 
-async function generateBatch(text, count, difficulty, language, startId = 1) {
+async function generateBatch(text, count, difficulty, language, startId = 1, attempt = 1) {
   const prompt = `Generate EXACTLY ${count} ${difficulty}-level questions (IDs ${startId} to ${startId + count - 1}).
 Return ONLY compact single-line JSON, no markdown.
 
-Content: ${text.slice(0, 3000)}`; // limit text to avoid token overflow
+Content: ${text.slice(0, 3000)}`;
 
   const message = await groq.chat.completions.create({
     model:       "llama-3.3-70b-versatile",
-    temperature: 0.2,
+    temperature: attempt === 1 ? 0.2 : 0.1, // lower temp on retry
     max_tokens:  8192,
     messages: [
       { role: "system", content: SYSTEM(language) },
@@ -38,32 +38,29 @@ Content: ${text.slice(0, 3000)}`; // limit text to avoid token overflow
 
   const raw = message.choices[0].message.content.trim();
 
-  // Strip markdown fences
   let clean = raw
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i,     "")
     .replace(/\s*```$/,      "")
     .trim();
 
-  // Try direct parse first
   let parsed;
   try {
     parsed = JSON.parse(clean);
   } catch {
-    // Try extracting JSON object
     const s = clean.indexOf("{");
     const e = clean.lastIndexOf("}");
     if (s !== -1 && e !== -1 && e > s) {
       try { parsed = JSON.parse(clean.slice(s, e + 1)); } catch {}
     }
-    // Last resort: fix common trailing comma issues
     if (!parsed) {
-      const fixed = clean
-        .replace(/,\s*}/g,  "}")
-        .replace(/,\s*]/g,  "]")
-        .replace(/\n/g,     " ")
-        .replace(/\t/g,     " ");
+      const fixed = clean.replace(/,\s*}/g,"}").replace(/,\s*]/g,"]").replace(/\n/g," ").replace(/\t/g," ");
       try { parsed = JSON.parse(fixed); } catch {}
+    }
+    // Auto-retry once on parse failure
+    if (!parsed && attempt < 2) {
+      console.warn(`[generateBatch] Parse failed attempt ${attempt}, retrying…`);
+      return generateBatch(text, count, difficulty, language, startId, 2);
     }
   }
   return parsed || null;

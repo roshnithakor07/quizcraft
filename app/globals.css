@@ -4,6 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ════════════════════════════════════════════════
+   LIGHT MODE  (100% unchanged from your original)
+   ════════════════════════════════════════════════ */
 :root {
   --ink:    #1a1208;
   --paper:  #faf6ef;
@@ -25,167 +28,267 @@ html, body {
   min-height: 100vh;
 }
 
-/* Paper texture overlay */
+/* Paper texture */
 body::before {
   content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0;
 }
 
-/* Thin horizontal rule lines */
+/* Ruled lines */
 body::after {
   content: '';
-  position: fixed;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent,
-    transparent 47px,
-    rgba(26,18,8,0.04) 47px,
-    rgba(26,18,8,0.04) 48px
-  );
-  pointer-events: none;
-  z-index: 0;
+  position: fixed; inset: 0;
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 47px, rgba(26,18,8,0.04) 47px, rgba(26,18,8,0.04) 48px);
+  pointer-events: none; z-index: 0;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--cream); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-/* Textarea styling */
-textarea {
-  font-family: 'DM Sans', sans-serif;
-  resize: none;
-  outline: none;
-  transition: border-color 0.2s;
-}
+.font-serif { font-family: 'Playfair Display', Georgia, serif; }
+.font-mono  { font-family: 'DM Mono', monospace; }
+
+.card { background: var(--paper); border: 1.5px solid var(--border); border-radius: 16px; padding: 24px; }
+
+textarea { font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
 textarea:focus { border-color: var(--amber) !important; }
 
-/* Answer option button states */
+/* Option buttons */
 .option-btn {
   transition: all 0.15s ease;
   cursor: pointer;
   border: 1.5px solid var(--border);
   background: var(--paper);
+  color: var(--ink);
 }
-.option-btn:hover:not(:disabled) {
-  border-color: var(--amber);
-  background: #fffbf4;
-  transform: translateX(4px);
-}
-.option-btn.selected   { border-color: var(--amber); background: #fef3c7; }
-.option-btn.correct    { border-color: var(--sage);  background: #ecfdf5; animation: correct 0.3s ease-out; }
-.option-btn.wrong      { border-color: var(--ember); background: #fff1ee; animation: shake   0.4s ease-out; }
-.option-btn.reveal     { border-color: var(--sage);  background: #ecfdf5; }
+.option-btn:hover:not(:disabled) { border-color: var(--amber); background: #fffbf4; transform: translateX(4px); }
+.option-btn.selected { border-color: var(--amber); background: #fef3c7; }
+.option-btn.correct  { border-color: var(--sage);  background: #ecfdf5; color: var(--ink); animation: correct 0.3s ease-out; }
+.option-btn.wrong    { border-color: var(--ember); background: #fff1ee; color: var(--ink); animation: shake   0.4s ease-out; }
+.option-btn.opacity-50 { opacity: 0.5; }
 
-/* Staggered reveal */
-.stagger > * { animation: rise 0.4s ease-out both; }
-.stagger > *:nth-child(1)  { animation-delay: 0.05s; }
-.stagger > *:nth-child(2)  { animation-delay: 0.10s; }
-.stagger > *:nth-child(3)  { animation-delay: 0.15s; }
-.stagger > *:nth-child(4)  { animation-delay: 0.20s; }
-.stagger > *:nth-child(5)  { animation-delay: 0.25s; }
-.stagger > *:nth-child(6)  { animation-delay: 0.30s; }
-.stagger > *:nth-child(7)  { animation-delay: 0.35s; }
-.stagger > *:nth-child(8)  { animation-delay: 0.40s; }
-.stagger > *:nth-child(9)  { animation-delay: 0.45s; }
-.stagger > *:nth-child(10) { animation-delay: 0.50s; }
-
-/* Progress bar */
 .progress-track { background: var(--warm); border-radius: 99px; overflow: hidden; }
-.progress-fill  {
-  background: linear-gradient(90deg, var(--amber), var(--ember));
-  border-radius: 99px;
-  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+.progress-fill  { background: linear-gradient(90deg, var(--amber), var(--ember)); border-radius: 99px; transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-/* Drop zone */
-.drop-zone {
-  border: 2px dashed var(--border);
-  transition: all 0.2s;
-}
-.drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--amber);
-  background: #fffbf4;
-}
+.tag { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 4px; }
 
-/* Tag pill */
-.tag {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
+@keyframes rise    { from { opacity:0; transform:translateY(8px);  } to { opacity:1; transform:none; } }
+@keyframes pop     { from { opacity:0; transform:scale(0.95);       } to { opacity:1; transform:none; } }
+@keyframes count   { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+@keyframes correct { 0%{background:#ecfdf5} 50%{background:#bbf7d0} 100%{background:#ecfdf5} }
+@keyframes shake   { 0%,100%{transform:none} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+.animate-rise  { animation: rise  0.3s ease both; }
+.animate-pop   { animation: pop   0.25s ease both; }
+.animate-count { animation: count 0.2s ease both; }
 
+.stagger > * { animation: rise 0.4s ease-out both; }
+.stagger > *:nth-child(1) { animation-delay:0.05s; }
+.stagger > *:nth-child(2) { animation-delay:0.10s; }
+.stagger > *:nth-child(3) { animation-delay:0.15s; }
+.stagger > *:nth-child(4) { animation-delay:0.20s; }
+.stagger > *:nth-child(5) { animation-delay:0.25s; }
 
-/* ── Dark Mode ─────────────────────────────────────────────────── */
-.dark {
-  --bg:     #0f0f0f;
-  --surface:#1a1a1a;
-  --border: #2e2e2e;
-  --paper:  #1a1a1a;
-  --cream:  #222222;
-  --warm:   #1f1f1f;
+/* ════════════════════════════════════════════════
+   DARK MODE  — warm parchment inverted
+   ════════════════════════════════════════════════ */
+html.dark {
   --ink:    #f0ece4;
-  --muted:  #888880;
+  --paper:  #1c1a16;
+  --cream:  #252218;
+  --warm:   #2e2a1f;
   --amber:  #f59e0b;
-  --sage:   #4ade80;
   --ember:  #f87171;
+  --sage:   #4ade80;
+  --muted:  #7a7060;
+  --border: #3a3528;
 }
 
-.dark body {
-  background: var(--bg);
-  color: var(--ink);
-}
+html.dark body            { background: #161410 !important; color: var(--ink) !important; }
+html.dark body::before    { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); }
+html.dark body::after     { display: none; }
 
-.dark .card {
-  background: var(--paper);
-  border-color: var(--border);
-}
+html.dark ::-webkit-scrollbar-track { background: #1c1a16; }
+html.dark ::-webkit-scrollbar-thumb { background: #3a3528; }
 
-.dark .option-btn {
-  background: var(--paper);
-  border-color: var(--border);
-  color: var(--ink);
-}
+/* Card */
+html.dark .card { background: var(--paper) !important; border-color: var(--border) !important; }
 
-.dark .option-btn:hover:not(:disabled) {
-  background: var(--cream);
-  border-color: var(--amber);
-}
-
-.dark .option-btn.correct {
-  background: rgba(74,222,128,0.1);
-  border-color: rgba(74,222,128,0.4);
-  color: #4ade80;
-}
-
-.dark .option-btn.wrong {
-  background: rgba(248,113,113,0.1);
-  border-color: rgba(248,113,113,0.4);
-  color: #f87171;
-}
-
-.dark input,
-.dark textarea,
-.dark select {
+/* ── Option buttons in dark ── */
+html.dark .option-btn {
   background: var(--paper) !important;
-  color: var(--ink) !important;
   border-color: var(--border) !important;
+  color: var(--ink) !important;
+}
+html.dark .option-btn:hover:not(:disabled) {
+  background: var(--cream) !important;
+  border-color: var(--amber) !important;
+  color: var(--ink) !important;
+}
+html.dark .option-btn.selected {
+  border-color: var(--amber) !important;
+  background: rgba(245,158,11,0.12) !important;
+  color: var(--ink) !important;
+}
+html.dark .option-btn.correct {
+  border-color: rgba(74,222,128,0.5) !important;
+  background: rgba(74,222,128,0.1) !important;
+  color: #4ade80 !important;
+}
+html.dark .option-btn.wrong {
+  border-color: rgba(248,113,113,0.5) !important;
+  background: rgba(248,113,113,0.1) !important;
+  color: #f87171 !important;
+}
+/* Letter box inside option button */
+html.dark .option-btn .bg-\[var\(--cream\)\] { background: var(--warm) !important; }
+
+/* ── Primary CTA button (bg-[var(--ink)]) ── */
+/* In dark: amber button instead of dark bg */
+html.dark .bg-\[var\(--ink\)\]           { background-color: var(--amber) !important; color: #161410 !important; }
+html.dark .text-\[var\(--paper\)\]        { color: #161410 !important; }
+html.dark .hover\:bg-\[#2d2010\]:hover   { background-color: #d97706 !important; }
+
+/* ── Share button (amber border/fill) ── */
+html.dark .bg-amber-50                   { background-color: rgba(245,158,11,0.1)  !important; }
+html.dark .bg-amber-100                  { background-color: rgba(245,158,11,0.15) !important; }
+html.dark .hover\:bg-amber-100:hover     { background-color: rgba(245,158,11,0.2)  !important; }
+html.dark .border-amber-200              { border-color: rgba(245,158,11,0.25) !important; }
+html.dark .border-amber-300              { border-color: rgba(245,158,11,0.35) !important; }
+html.dark .border-amber-400              { border-color: rgba(245,158,11,0.45) !important; }
+html.dark .text-amber-700                { color: #fbbf24 !important; }
+html.dark .text-amber-600                { color: #f59e0b !important; }
+html.dark .text-amber-800                { color: #fcd34d !important; }
+
+/* ── Warning banner (inline style override) ── */
+html.dark [style*="background:#fffbeb"],
+html.dark [style*="background: #fffbeb"] { background: rgba(245,158,11,0.08) !important; }
+html.dark [style*="border:1px solid #fcd34d"],
+html.dark [style*="border: 1px solid #fcd34d"] { border-color: rgba(245,158,11,0.3) !important; }
+
+/* ── Inputs ── */
+html.dark input, html.dark textarea, html.dark select {
+  background: var(--paper) !important; color: var(--ink) !important; border-color: var(--border) !important;
+}
+html.dark input::placeholder, html.dark textarea::placeholder { color: var(--muted) !important; opacity: 0.6; }
+html.dark input:focus, html.dark textarea:focus { border-color: var(--amber) !important; }
+
+/* ── Progress ── */
+html.dark .progress-track { background: var(--warm); }
+
+/* ── Backgrounds ── */
+html.dark .bg-\[var\(--paper\)\]  { background-color: var(--paper) !important; }
+html.dark .bg-\[var\(--cream\)\]  { background-color: var(--cream) !important; }
+html.dark .bg-\[var\(--warm\)\]   { background-color: var(--warm)  !important; }
+html.dark .hover\:bg-\[var\(--cream\)\]:hover { background-color: var(--cream) !important; }
+html.dark .hover\:bg-\[#fffbf4\]:hover        { background-color: var(--cream) !important; }
+
+/* ── Text ── */
+html.dark .text-\[var\(--ink\)\]   { color: var(--ink)   !important; }
+html.dark .text-\[var\(--muted\)\] { color: var(--muted) !important; }
+
+/* ── Borders ── */
+html.dark .border-\[var\(--border\)\]             { border-color: var(--border) !important; }
+html.dark .hover\:border-\[var\(--amber\)\]:hover { border-color: var(--amber)  !important; }
+html.dark .hover\:text-\[var\(--ink\)\]:hover     { color: var(--ink) !important; }
+html.dark .hover\:border-red-300:hover            { border-color: #f87171 !important; }
+html.dark .hover\:text-red-500:hover              { color: #f87171 !important; }
+
+/* ── Sage / Ember / Score ── */
+html.dark .bg-sage\/10      { background-color: rgba(74,222,128,0.08)  !important; }
+html.dark .bg-sage\/15      { background-color: rgba(74,222,128,0.12)  !important; }
+html.dark .border-sage\/30  { border-color: rgba(74,222,128,0.25) !important; }
+html.dark .border-sage\/40  { border-color: rgba(74,222,128,0.3)  !important; }
+html.dark .text-sage        { color: #4ade80 !important; }
+html.dark .bg-ember\/10     { background-color: rgba(248,113,113,0.08) !important; }
+html.dark .bg-ember\/15     { background-color: rgba(248,113,113,0.12) !important; }
+html.dark .border-ember\/30 { border-color: rgba(248,113,113,0.25) !important; }
+html.dark .text-ember       { color: #f87171 !important; }
+
+/* Score inline style colour overrides */
+html.dark [style*="color:#4d7c5f"] { color: #4ade80 !important; }
+html.dark [style*="color:#d97706"] { color: #f59e0b !important; }
+html.dark [style*="color:#c2410c"] { color: #f87171 !important; }
+html.dark [style*="color:#ea8c2a"] { color: #fb923c !important; }
+
+/* ── Shadows / Modal ── */
+html.dark .shadow-xl        { box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important; }
+html.dark .shadow-lg        { box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important; }
+html.dark .bg-black\/50     { background-color: rgba(0,0,0,0.75) !important; }
+html.dark .bg-black\/40     { background-color: rgba(0,0,0,0.65) !important; }
+
+/* ════════════════════════════════════════════════
+   DARK MODE BUTTON HOVER FIXES
+   ════════════════════════════════════════════════ */
+
+/* ── Amber/CTA button hover ── */
+/* bg-[var(--ink)] in dark = amber, hover should darken it */
+html.dark .bg-\[var\(--ink\)\]:hover,
+html.dark .hover\:bg-\[#2d2010\]:hover {
+  background-color: #d97706 !important;
+  color: #161410 !important;
 }
 
-.dark input::placeholder,
-.dark textarea::placeholder {
-  color: var(--muted) !important;
-  opacity: 0.5;
+/* ── Retry quiz button hover (was showing white) ── */
+/* border button hover in dark: cream bg, amber border, dark text */
+html.dark .hover\:bg-\[#fffbf4\]:hover {
+  background-color: var(--cream) !important;
+  color: var(--ink) !important;
 }
 
-.dark .progress-track {
-  background: var(--cream);
+/* ── Share button (amber border, amber bg) hover ── */
+html.dark .hover\:bg-amber-100:hover {
+  background-color: rgba(245,158,11,0.2) !important;
+}
+
+/* ── "Save my quiz" button in warning banner hover ── */
+html.dark .hover\:bg-amber-200:hover {
+  background-color: rgba(245,158,11,0.25) !important;
+}
+
+/* ── All generic border hover → amber ── */
+html.dark .hover\:border-\[var\(--amber\)\]:hover {
+  border-color: var(--amber) !important;
+}
+html.dark .hover\:text-\[var\(--ink\)\]:hover {
+  color: var(--ink) !important;
+}
+
+/* ── Warning banner complete dark fix ── */
+/* Catch both style variations */
+html.dark [style*="background:#fffbeb"],
+html.dark [style*="background: #fffbeb"] {
+  background: rgba(245,158,11,0.08) !important;
+}
+html.dark [style*="border:1px solid #fcd34d"],
+html.dark [style*="border: 1px solid #fcd34d"] {
+  border-color: rgba(245,158,11,0.3) !important;
+}
+/* Text colours inside banner */
+html.dark .text-amber-800 { color: #fcd34d !important; }
+html.dark .text-amber-700 { color: #fbbf24 !important; }
+html.dark .border-amber-400 { border-color: rgba(245,158,11,0.45) !important; }
+html.dark .bg-amber-100 { background-color: rgba(245,158,11,0.15) !important; }
+
+/* ── Generate Quiz button loading state ── */
+html.dark .bg-\[var\(--warm\)\] { background-color: var(--warm) !important; }
+html.dark .text-\[var\(--muted\)\] { color: var(--muted) !important; }
+
+/* ── Retry/outline buttons — no white flash on hover ── */
+html.dark button.hover\:bg-\[#fffbf4\]:hover,
+html.dark .hover\:bg-\[#fffbf4\]:hover {
+  background-color: var(--cream) !important;
+  color: var(--ink) !important;
+}
+
+/* ── Delete/red buttons ── */
+html.dark .hover\:border-red-300:hover { border-color: #f87171 !important; }
+html.dark .hover\:text-red-500:hover   { color: #f87171 !important; }
+
+/* ── Nav/outline buttons in header ── */
+html.dark button:not([class*="bg-"]):hover,
+html.dark a:not([class*="bg-"]):hover {
+  color: inherit;
 }

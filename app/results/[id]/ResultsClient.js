@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ThemeToggle from "../../ThemeToggle";
+
+const LETTERS = ["A","B","C","D"];
 
 function scoreColor(pct) {
   if (pct >= 80) return "#4d7c5f";
@@ -11,17 +14,14 @@ function scoreColor(pct) {
 
 // ── User Response Modal ───────────────────────────────────────────
 function ResponseModal({ response, quiz, onClose }) {
-  const LETTERS = ["A","B","C","D"];
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[var(--paper)] border border-[var(--border)] rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-xl"
-        onClick={e=>e.stopPropagation()}>
+      <div className="bg-[var(--paper)] border border-[var(--border)] rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}>
         <div className="sticky top-0 bg-[var(--paper)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between">
           <div>
             <p className="font-serif font-bold text-[var(--ink)]">{response.takerName}</p>
-            <p className="text-xs text-[var(--muted)]">
-              {response.score}/{response.total} correct · {response.percentage}%
-            </p>
+            <p className="text-xs text-[var(--muted)]">{response.score}/{response.total} correct · {response.percentage}%</p>
           </div>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center border border-[var(--border)] text-[var(--muted)] hover:bg-[var(--cream)] transition-all">
@@ -35,7 +35,7 @@ function ResponseModal({ response, quiz, onClose }) {
             return (
               <div key={q.id} className="border border-[var(--border)] rounded-xl p-4">
                 <div className="flex items-start gap-3 mb-3">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${isRight?"bg-sage/15 text-sage":"bg-ember/15 text-ember"}`}>
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${isRight ? "bg-sage/15 text-sage" : "bg-ember/15 text-ember"}`}>
                     {isRight ? "✓" : "✗"}
                   </span>
                   <p className="text-sm font-medium text-[var(--ink)]">
@@ -65,20 +65,13 @@ function ResponseModal({ response, quiz, onClose }) {
   );
 }
 
+// ── Main Component ────────────────────────────────────────────────
 export default function ResultsClient({ quiz, responses, shareId }) {
   const [copied,       setCopied]       = useState(false);
   const [origin,       setOrigin]       = useState("");
   const [viewResponse, setViewResponse] = useState(null);
 
-  useEffect(() => {
-    setOrigin(window.location.origin);
-    if (saved === "1") { setDark(true); document.documentElement.classList.add("dark"); }
-  }, []);
-
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-  };
+  useEffect(() => { setOrigin(window.location.origin); }, []);
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(`${origin}/quiz/${shareId}`);
@@ -93,26 +86,20 @@ export default function ResultsClient({ quiz, responses, shareId }) {
       <div className="max-w-3xl mx-auto px-4 py-10">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
+        <div className="flex items-start justify-between gap-4 mb-8">
+          <div className="min-w-0 flex-1">
             <p className="text-xs text-[var(--muted)] font-mono mb-1">Results Dashboard</p>
-            <h1 className="font-serif text-2xl font-bold text-[var(--ink)]">{quiz.title}</h1>
-            <p className="text-sm text-[var(--muted)] mt-0.5">{quiz.topic}</p>
+            <h1 className="font-serif text-2xl font-bold text-[var(--ink)] truncate">{quiz.title}</h1>
+            <p className="text-sm text-[var(--muted)] mt-0.5 line-clamp-2">{quiz.topic}</p>
           </div>
-          <div className="flex items-center gap-2">
-              className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-xl text-[var(--muted)] hover:border-[var(--amber)] transition-all">
-              {dark
-                ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              }
-            </button>
-            {/* Open quiz */}
+          <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggle />
             <a href={`/quiz/${shareId}`} target="_blank"
-              className="text-xs px-3 py-2 border border-[var(--border)] rounded-xl text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] transition-all flex items-center gap-1.5">
+              className="text-xs px-3 py-2 border border-[var(--border)] rounded-xl text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] transition-all whitespace-nowrap">
               Open quiz ↗
             </a>
             <a href="/dashboard"
-              className="text-xs border border-[var(--border)] px-3 py-2 rounded-xl text-[var(--muted)] hover:border-[var(--amber)] transition-all">
+              className="text-xs border border-[var(--border)] px-3 py-2 rounded-xl text-[var(--muted)] hover:border-[var(--amber)] transition-all whitespace-nowrap">
               ← My quizzes
             </a>
           </div>
@@ -129,7 +116,7 @@ export default function ResultsClient({ quiz, responses, shareId }) {
               className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg transition-all ${
                 copied
                   ? "bg-sage/15 text-sage border border-sage/30"
-                  : "text-[var(--amber)] hover:bg-[var(--cream)] border border-transparent hover:border-[var(--amber)]/30"
+                  : "text-[var(--amber)] border border-transparent hover:border-[var(--amber)]/30"
               }`}>
               {copied ? "✓ Copied!" : "Copy link"}
             </button>
@@ -181,8 +168,7 @@ export default function ResultsClient({ quiz, responses, shareId }) {
                 return (
                   <div key={i}
                     className="grid grid-cols-5 items-center px-3 py-3 rounded-xl hover:bg-[var(--cream)] transition-colors cursor-pointer group"
-                    onClick={() => setViewResponse(r)}
-                    title="Click to view answers">
+                    onClick={() => setViewResponse(r)}>
                     <div className="col-span-2 flex items-center gap-2">
                       <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                         style={{background:c}}>
@@ -209,13 +195,9 @@ export default function ResultsClient({ quiz, responses, shareId }) {
         </div>
       </div>
 
-      {/* View response modal */}
       {viewResponse && (
-        <ResponseModal
-          response={viewResponse}
-          quiz={quiz}
-          onClose={() => setViewResponse(null)}
-        />
+        <ResponseModal response={viewResponse} quiz={quiz} onClose={() => setViewResponse(null)}/>
       )}
     </div>
   );
+}

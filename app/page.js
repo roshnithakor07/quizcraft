@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import ThemeToggle from "./ThemeToggle";
 import { DIFFICULTIES, COUNTS, LETTERS, LANGUAGES } from "../lib/constants";
 
 // ── Icons ─────────────────────────────────────────────────────────
@@ -595,6 +596,7 @@ export default function Home() {
             <span className="font-serif text-2xl font-bold text-[var(--ink)]">QuizCraft</span>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle/>
             {session ? (
               <>
                 <Link href="/dashboard"
@@ -833,6 +835,7 @@ export default function Home() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-serif text-2xl font-bold text-[var(--ink)]">QuizCraft</h1>
           <div className="flex items-center gap-2">
+            <ThemeToggle/>
             <ExportDropdown quiz={quiz}/>
             <button onClick={handleShare} disabled={sharing}
               className="flex items-center gap-1.5 text-xs text-[var(--amber)] border border-[var(--amber)]/40 bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-all">
