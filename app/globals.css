@@ -122,3 +122,70 @@ textarea:focus { border-color: var(--amber) !important; }
   padding: 2px 8px;
   border-radius: 4px;
 }
+
+
+/* ── Dark Mode ─────────────────────────────────────────────────── */
+.dark {
+  --bg:     #0f0f0f;
+  --surface:#1a1a1a;
+  --border: #2e2e2e;
+  --paper:  #1a1a1a;
+  --cream:  #222222;
+  --warm:   #1f1f1f;
+  --ink:    #f0ece4;
+  --muted:  #888880;
+  --amber:  #f59e0b;
+  --sage:   #4ade80;
+  --ember:  #f87171;
+}
+
+.dark body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.dark .card {
+  background: var(--paper);
+  border-color: var(--border);
+}
+
+.dark .option-btn {
+  background: var(--paper);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.dark .option-btn:hover:not(:disabled) {
+  background: var(--cream);
+  border-color: var(--amber);
+}
+
+.dark .option-btn.correct {
+  background: rgba(74,222,128,0.1);
+  border-color: rgba(74,222,128,0.4);
+  color: #4ade80;
+}
+
+.dark .option-btn.wrong {
+  background: rgba(248,113,113,0.1);
+  border-color: rgba(248,113,113,0.4);
+  color: #f87171;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+  border-color: var(--border) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--muted) !important;
+  opacity: 0.5;
+}
+
+.dark .progress-track {
+  background: var(--cream);
+}

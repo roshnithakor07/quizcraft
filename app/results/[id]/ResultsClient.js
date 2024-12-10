@@ -68,10 +68,17 @@ function ResponseModal({ response, quiz, onClose }) {
 export default function ResultsClient({ quiz, responses, shareId }) {
   const [copied,       setCopied]       = useState(false);
   const [origin,       setOrigin]       = useState("");
-  const [viewResponse, setViewResponse] = useState(null); // response to show in modal
+  const [viewResponse, setViewResponse] = useState(null);
 
-  // Fix hydration — only use window.location on client
-  useEffect(() => { setOrigin(window.location.origin); }, []);
+  useEffect(() => {
+    setOrigin(window.location.origin);
+    if (saved === "1") { setDark(true); document.documentElement.classList.add("dark"); }
+  }, []);
+
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+  };
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(`${origin}/quiz/${shareId}`);
@@ -92,9 +99,23 @@ export default function ResultsClient({ quiz, responses, shareId }) {
             <h1 className="font-serif text-2xl font-bold text-[var(--ink)]">{quiz.title}</h1>
             <p className="text-sm text-[var(--muted)] mt-0.5">{quiz.topic}</p>
           </div>
-          <a href="/dashboard" className="text-xs border border-[var(--border)] px-3 py-2 rounded-xl text-[var(--muted)] hover:border-[var(--amber)] transition-all">
-            ← My quizzes
-          </a>
+          <div className="flex items-center gap-2">
+              className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-xl text-[var(--muted)] hover:border-[var(--amber)] transition-all">
+              {dark
+                ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              }
+            </button>
+            {/* Open quiz */}
+            <a href={`/quiz/${shareId}`} target="_blank"
+              className="text-xs px-3 py-2 border border-[var(--border)] rounded-xl text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] transition-all flex items-center gap-1.5">
+              Open quiz ↗
+            </a>
+            <a href="/dashboard"
+              className="text-xs border border-[var(--border)] px-3 py-2 rounded-xl text-[var(--muted)] hover:border-[var(--amber)] transition-all">
+              ← My quizzes
+            </a>
+          </div>
         </div>
 
         {/* Share link */}
@@ -198,4 +219,3 @@ export default function ResultsClient({ quiz, responses, shareId }) {
       )}
     </div>
   );
-}
