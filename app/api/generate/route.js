@@ -41,10 +41,22 @@ Rules:
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { text, count, difficulty } = body;
+    const { text, imageBase64, count, difficulty } = body;
 
-    if (!text) {
-      return NextResponse.json({ error: "Provide text content." }, { status: 400 });
+    // ── Validation ──────────────────────────────────────────────
+    if (!text && !imageBase64) {
+      return NextResponse.json({ error: "Provide text or an image." }, { status: 400 });
+    }
+
+    // Image tab with no text — Groq doesn't support vision
+    if (imageBase64 && !text) {
+      return NextResponse.json({
+        error: "Image analysis is not supported with the free Groq API. Please switch to the Text tab and paste your content instead."
+      }, { status: 400 });
+    }
+
+    if (text && text.trim().length < 20) {
+      return NextResponse.json({ error: "Text too short to generate meaningful questions." }, { status: 400 });
     }
 
     const prompt = `Generate ${count} ${difficulty}-level multiple choice questions from the content below.\n\nReturn ONLY valid JSON, no markdown.\n\nContent:\n${text}`;
@@ -76,10 +88,10 @@ export async function POST(request) {
     }
 
     return NextResponse.json({ success: true, quiz });
-  } catch (error) {
-    console.error("Quiz generation error:", error);
+  } catch (err) {
+    console.error("Quiz generation error:", err);
 
-    if (error?.status === 429) {
+    if (err?.status === 429) {
       return NextResponse.json(
         { error: "Rate limit hit. Please wait a moment and try again." },
         { status: 429 }

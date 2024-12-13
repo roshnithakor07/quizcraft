@@ -326,7 +326,7 @@ export default function Home() {
     setLoading(true); setError(null);
     try {
       const body = {
-        text:           tab === "text" ? text : (text || ""),
+        text:           tab === "text" ? text : "",
         imageBase64:    tab === "image" ? image.base64    : undefined,
         imageMediaType: tab === "image" ? image.mediaType : undefined,
         count:      finalCount,
@@ -380,7 +380,7 @@ export default function Home() {
             ].map(({ id, label, Icon }) => (
               <button
                 key={id}
-                onClick={() => { setTab(id); setError(null); }}
+                onClick={() => { setTab(id); setError(null); if (id === "image") setText(""); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   tab === id
                     ? "bg-[var(--paper)] text-[var(--ink)] shadow-sm border border-[var(--border)]"
@@ -591,7 +591,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-12 pt-6 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--muted)]">
-          <span>QuizCraft · Built with Next.js + Groq API</span>
+          <span>QuizCraft · Built with Next.js + Claude API</span>
           <div className="flex items-center gap-3">
             <a href="https://github.com/roshnithakor07/quizcraft" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[var(--ink)] transition-colors">
               <Icons.GitHub /> GitHub
