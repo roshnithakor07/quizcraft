@@ -263,19 +263,35 @@ function QuizScreen({ quiz, onFinish }) {
 
 // ── Main Page ─────────────────────────────────────────────────────
 export default function Home() {
-  const [tab,        setTab]        = useState("text");   // "text" | "image"
+  const [tab,        setTab]        = useState("text");
   const [text,       setText]       = useState("");
-  const [image,      setImage]      = useState(null);     // { base64, mediaType, preview }
-  const [difficulty, setDifficulty] = useState("medium");
+  const [image,      setImage]      = useState(null);
+  const [difficulties, setDifficulties] = useState(["medium"]); // multi-select array
   const [count,      setCount]      = useState(5);
+  const [customCount, setCustomCount] = useState("");
+  const [useCustom,  setUseCustom]  = useState(false);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState(null);
   const [quiz,       setQuiz]       = useState(null);
-  const [screen,     setScreen]     = useState("input"); // "input" | "quiz" | "results"
+  const [screen,     setScreen]     = useState("input");
   const [finalAns,   setFinalAns]   = useState({});
   const [dragOver,   setDragOver]   = useState(false);
 
   const fileRef = useRef(null);
+
+  const toggleDifficulty = (val) => {
+    setDifficulties((prev) =>
+      prev.includes(val)
+        ? prev.length === 1 ? prev  // keep at least 1 selected
+        : prev.filter((d) => d !== val)
+        : [...prev, val]
+    );
+    setError(null);
+  };
+
+  const finalCount = useCustom
+    ? Math.min(Math.max(parseInt(customCount) || 5, 1), 20)
+    : count;
 
   // ── Image handling ─────────────────────────────────────────────
   const handleFile = useCallback((file) => {
@@ -298,8 +314,14 @@ export default function Home() {
   // ── Generate quiz ──────────────────────────────────────────────
   const generate = async () => {
     if (loading) return;
-    if (tab === "text" && !text.trim()) { setError("Please enter some text."); return; }
-    if (tab === "image" && !image)      { setError("Please upload an image."); return; }
+
+    // Validation
+    if (tab === "text" && !text.trim()) { setError("Please enter some text first."); return; }
+    if (tab === "text" && text.trim().length < 50) { setError("Text too short — paste at least 50 characters for good questions."); return; }
+    if (tab === "image" && !image) { setError("Please upload an image."); return; }
+    if (useCustom && (!customCount || parseInt(customCount) < 1 || parseInt(customCount) > 20)) {
+      setError("Custom count must be between 1 and 20."); return;
+    }
 
     setLoading(true); setError(null);
     try {
@@ -307,8 +329,8 @@ export default function Home() {
         text:           tab === "text" ? text : (text || ""),
         imageBase64:    tab === "image" ? image.base64    : undefined,
         imageMediaType: tab === "image" ? image.mediaType : undefined,
-        count,
-        difficulty,
+        count:      finalCount,
+        difficulty: difficulties.join(", "),
       };
       const res  = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -444,47 +466,104 @@ export default function Home() {
 
           {/* Settings row */}
           <div className="grid grid-cols-2 gap-4">
+
+            {/* Difficulty - multi select */}
             <div>
-              <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2 block">Difficulty</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Difficulty</label>
+                <span className="text-[10px] text-[var(--muted)] bg-[var(--cream)] border border-[var(--border)] px-2 py-0.5 rounded-full">
+                  multi-select
+                </span>
+              </div>
               <div className="flex flex-col gap-1.5">
-                {DIFFICULTIES.map((d) => (
-                  <button
-                    key={d.value}
-                    onClick={() => setDifficulty(d.value)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl border text-sm transition-all ${
-                      difficulty === d.value
-                        ? d.color
-                        : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--amber)]"
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${
-                      difficulty === d.value
-                        ? d.value === "easy" ? "bg-sage" : d.value === "medium" ? "bg-amber-500" : "bg-ember"
-                        : "bg-[var(--border)]"
-                    }`} />
-                    <span className="font-medium">{d.label}</span>
-                    <span className="text-xs ml-auto opacity-70">{d.desc}</span>
-                  </button>
-                ))}
+                {DIFFICULTIES.map((d) => {
+                  const isActive = difficulties.includes(d.value);
+                  const dotColor = d.value === "easy" ? "#4d7c5f" : d.value === "medium" ? "#d97706" : "#c2410c";
+                  const bgColor  = d.value === "easy" ? "rgba(77,124,95,0.08)" : d.value === "medium" ? "rgba(217,119,6,0.08)" : "rgba(194,65,12,0.08)";
+                  const borderColor = d.value === "easy" ? "rgba(77,124,95,0.4)" : d.value === "medium" ? "rgba(217,119,6,0.4)" : "rgba(194,65,12,0.4)";
+                  return (
+                    <button
+                      key={d.value}
+                      onClick={() => toggleDifficulty(d.value)}
+                      style={isActive ? { background: bgColor, borderColor, color: dotColor } : {}}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                        isActive
+                          ? "font-medium"
+                          : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--border)] hover:bg-[var(--cream)]"
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <span
+                        className="w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-all"
+                        style={isActive
+                          ? { background: dotColor, borderColor: dotColor }
+                          : { borderColor: "var(--border)" }
+                        }
+                      >
+                        {isActive && (
+                          <svg viewBox="0 0 12 12" fill="none" className="w-2.5 h-2.5">
+                            <polyline points="2 6 5 9 10 3" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                          </svg>
+                        )}
+                      </span>
+                      <span>{d.label}</span>
+                      <span className="text-xs ml-auto opacity-60">{d.desc}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
+            {/* Number of questions */}
             <div>
-              <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2 block">Number of Questions</label>
-              <div className="grid grid-cols-2 gap-2">
-                {COUNTS.map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setCount(n)}
-                    className={`py-3 rounded-xl border font-mono font-semibold text-sm transition-all ${
-                      count === n
-                        ? "border-[var(--amber)] bg-amber-50 text-amber-700"
-                        : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--amber)]"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">Questions</label>
+                <button
+                  onClick={() => { setUseCustom((v) => !v); setError(null); }}
+                  className="text-[10px] text-[var(--amber)] hover:underline"
+                >
+                  {useCustom ? "use preset" : "custom"}
+                </button>
+              </div>
+
+              {useCustom ? (
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={customCount}
+                    onChange={(e) => { setCustomCount(e.target.value); setError(null); }}
+                    placeholder="1 – 20"
+                    className="w-full border border-[var(--border)] rounded-xl px-4 py-3 text-sm font-mono font-semibold text-[var(--ink)] bg-[var(--paper)] outline-none focus:border-[var(--amber)] placeholder-[var(--muted)]/40 text-center"
+                  />
+                  <p className="text-[10px] text-[var(--muted)] text-center mt-1.5">Enter any number from 1 to 20</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {COUNTS.map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => { setCount(n); setError(null); }}
+                      className={`py-3 rounded-xl border font-mono font-semibold text-sm transition-all ${
+                        count === n
+                          ? "border-[var(--amber)] bg-amber-50 text-amber-700"
+                          : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--amber)] hover:bg-[var(--cream)]"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Summary */}
+              <div className="mt-3 px-3 py-2 bg-[var(--cream)] border border-[var(--border)] rounded-xl">
+                <p className="text-[11px] text-[var(--muted)] text-center">
+                  <span className="font-semibold text-[var(--ink)]">{finalCount} questions</span>
+                  {" · "}
+                  <span className="font-semibold text-[var(--ink)] capitalize">{difficulties.join(" + ")}</span>
+                </p>
               </div>
             </div>
           </div>
