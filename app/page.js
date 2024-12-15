@@ -147,6 +147,7 @@ function LanguagePicker({ value, onChange }) {
     </div>
   );
 }
+
 function scoreMeta(pct) {
   if (pct >= 90) return { label:"Outstanding!",   color:"text-sage",  bg:"bg-sage/10"  };
   if (pct >= 70) return { label:"Great job!",     color:"text-amber", bg:"bg-amber/10" };
@@ -445,8 +446,9 @@ export default function Home() {
         .catch(console.error);
     } catch {}
   }, [session?.user?.id]);
+
   const [text,         setText]         = useState("");
-  const [tab,          setTab]          = useState("text"); // text | image
+  const [tab,          setTab]          = useState("text"); // text | image | url  ← url added
   const [image,        setImage]        = useState(null);   // { base64, mediaType, preview, name }
   const [dragOver,     setDragOver]     = useState(false);
   const [difficulties, setDifficulties] = useState(["medium"]);
@@ -463,7 +465,14 @@ export default function Home() {
   const [shareId,      setShareId]      = useState(null);
   const [sharing,      setSharing]      = useState(false);
   const [showShare,    setShowShare]    = useState(false);
-  const [autoSaved,    setAutoSaved]    = useState(false); // tracks if quiz was auto-saved
+  const [autoSaved,    setAutoSaved]    = useState(false);
+
+  // ── NEW: URL tab state ────────────────────────────────────────
+  const [urlInput,    setUrlInput]    = useState("");
+  const [urlFetched,  setUrlFetched]  = useState(null); // { text, type, message } once loaded
+  const [urlFetching, setUrlFetching] = useState(false);
+  const [urlError,    setUrlError]    = useState(null);
+  // ─────────────────────────────────────────────────────────────
 
   const fileRef = useRef(null);
 
@@ -493,6 +502,38 @@ export default function Home() {
     ? Math.min(Math.max(parseInt(customCount)||5, 1), 200)
     : count;
 
+  // ── NEW: fetchUrl ─────────────────────────────────────────────
+  const fetchUrl = async () => {
+    if (urlFetching) return;
+    const trimmed = urlInput.trim();
+
+    // Client-side validation
+    if (!trimmed) { setUrlError("Please enter a URL."); return; }
+    if (!/^https?:\/\//i.test(trimmed)) {
+      setUrlError("Please enter a full URL starting with https://"); return;
+    }
+
+    setUrlFetching(true);
+    setUrlError(null);
+    setUrlFetched(null);
+
+    try {
+      const res  = await fetch("/api/fetch-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Failed to fetch content.");
+      setUrlFetched({ text: data.text, type: data.type, message: data.message });
+    } catch (e) {
+      setUrlError(e.message);
+    } finally {
+      setUrlFetching(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────
+
   // ── Generate ───────────────────────────────────────────────────
   const generate = async () => {
     if (loading) return;
@@ -501,6 +542,12 @@ export default function Home() {
       if (text.trim().length < 50) { setError("Text too short — paste at least 50 characters."); return; }
     }
     if (tab === "image" && !image) { setError("Please upload an image first."); return; }
+    // ── NEW: URL tab validation ──
+    if (tab === "url") {
+      if (!urlFetched)                   { setError("Please load a URL first using the Load button."); return; }
+      if (urlFetched.text.length < 50)   { setError("Not enough content was extracted from that URL."); return; }
+    }
+    // ────────────────────────────
     if (useCustom && (!customCount || parseInt(customCount)<1 || parseInt(customCount)>200)) {
       setError("Custom count must be between 1 and 200."); return;
     }
@@ -515,7 +562,8 @@ export default function Home() {
       const res  = await fetch("/api/generate", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          text:           tab === "text" ? text : "",
+          text:           tab === "text"  ? text             : undefined,
+          urlText:        tab === "url"   ? urlFetched?.text : undefined, // ← NEW
           imageBase64:    tab === "image" ? image.base64     : undefined,
           imageMediaType: tab === "image" ? image.mediaType  : undefined,
           count: finalCount, difficulty: difficulties.join(", "), language,
@@ -640,6 +688,12 @@ export default function Home() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               Image / Photo
             </button>
+            {/* ── NEW: Link / URL tab button ── */}
+            <button onClick={()=>{setTab("url");setError(null);}}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${tab==="url"?"bg-[var(--paper)] text-[var(--ink)] shadow-sm border border-[var(--border)]":"text-[var(--muted)] hover:text-[var(--ink)]"}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              Link / URL
+            </button>
           </div>
 
           {/* ── TEXT TAB ── */}
@@ -711,6 +765,99 @@ export default function Home() {
               )}
             </div>
           )}
+
+          {/* ── NEW: URL TAB ── */}
+          {tab==="url" && (
+            <div>
+              <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2 block">
+                Website or YouTube URL
+              </label>
+
+              {/* Info banner */}
+              <div className="flex items-start gap-3 bg-[var(--cream)] border border-[var(--border)] rounded-xl px-4 py-3 mb-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4 text-[var(--muted)] shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <p className="text-xs text-[var(--muted)] leading-relaxed">
+                  Paste any public webpage or YouTube video link.
+                  <span className="text-[var(--ink)] font-medium"> YouTube videos need captions/subtitles enabled.</span>
+                </p>
+              </div>
+
+              {/* URL input + Load button */}
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => {
+                    setUrlInput(e.target.value);
+                    setUrlError(null);
+                    if (urlFetched) setUrlFetched(null); // clear old result when URL changes
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") fetchUrl(); }}
+                  placeholder="https://en.wikipedia.org/wiki/... or https://youtube.com/watch?v=..."
+                  className="flex-1 border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--ink)] bg-[var(--paper)] outline-none focus:border-[var(--amber)] placeholder-[var(--muted)]/40 transition-colors"
+                />
+                <button
+                  onClick={fetchUrl}
+                  disabled={urlFetching || !urlInput.trim()}
+                  className={`px-5 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shrink-0 ${
+                    urlFetching || !urlInput.trim()
+                      ? "bg-[var(--warm)] text-[var(--muted)] cursor-not-allowed"
+                      : "bg-[var(--ink)] text-[var(--paper)] hover:bg-[#2d2010]"
+                  }`}
+                >
+                  {urlFetching ? <Icons.Loader /> : <Icons.Globe />}
+                  {urlFetching ? "Loading…" : "Load"}
+                </button>
+              </div>
+
+              {/* URL-specific error */}
+              {urlError && (
+                <div className="bg-ember/10 border border-ember/30 text-ember text-xs px-4 py-3 rounded-xl mb-3">
+                  {urlError}
+                </div>
+              )}
+
+              {/* Success state */}
+              {urlFetched && !urlError && (
+                <div className="bg-sage/10 border border-sage/30 rounded-xl px-4 py-3 mb-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-sage mt-0.5 shrink-0"><Icons.Check /></span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-[var(--ink)] mb-0.5">
+                        {urlFetched.type === "youtube" ? "YouTube transcript loaded" : "Page content loaded"}
+                      </p>
+                      <p className="text-xs text-[var(--muted)]">{urlFetched.message}</p>
+                    </div>
+                  </div>
+                  {/* Text preview */}
+                  <p className="text-[11px] text-[var(--muted)] mt-2 pt-2 border-t border-[var(--border)] leading-relaxed font-mono"
+                    style={{display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+                    {urlFetched.text.slice(0, 200)}…
+                  </p>
+                </div>
+              )}
+
+              {/* Example URLs — only shown before a successful fetch */}
+              {!urlFetched && !urlFetching && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {[
+                    { label:"📺 YouTube — Veritasium", url:"https://www.youtube.com/watch?v=HeQX2HjkcNo" },
+                    { label:"🌐 Wikipedia — DNA",      url:"https://en.wikipedia.org/wiki/DNA" },
+                    { label:"🌐 Wikipedia — Climate",  url:"https://en.wikipedia.org/wiki/Climate_change" },
+                  ].map((s) => (
+                    <button
+                      key={s.label}
+                      onClick={() => { setUrlInput(s.url); setUrlError(null); setUrlFetched(null); }}
+                      className="text-[11px] px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] hover:bg-[var(--cream)] transition-all"
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {/* ── END URL TAB ── */}
 
           {/* Language */}
           <div>
