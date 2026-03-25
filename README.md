@@ -1,32 +1,49 @@
-# 🧠 QuizCraft — AI Quiz Generator from Text & Images
+# 📝 QuizCraft — AI Quiz Generator
 
-> Transform any paragraph, article, textbook page, or image into a fully interactive multiple-choice quiz — powered by Claude AI.
+> Generate quizzes from any text using AI · Share with anyone via link · Export PDF or Word · Track responses with a results dashboard.
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
-![Claude API](https://img.shields.io/badge/Claude-Vision+Text-orange?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Groq](https://img.shields.io/badge/Groq-LLaMA_3.3_70B-orange?style=flat-square)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?style=flat-square&logo=mongodb)
+![NextAuth](https://img.shields.io/badge/NextAuth.js-v4-purple?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
 ---
 
-## 📸 Features at a Glance
+## ✨ Features
 
-```
-Input modes:   📝 Paste Text   |   🖼️ Upload Image (vision AI)
-Difficulty:    🟢 Easy  🟡 Medium  🔴 Hard
-Questions:     3 · 5 · 7 · 10
-Output:        Interactive MCQ quiz → Score → Review with explanations
-```
+### Quiz Generation
+- **Text input** — Paste notes, articles, textbook excerpts
+- **Image upload** — Upload textbook pages or slides (best with clear text)
+- **Up to 200 questions** — Auto-batches API calls for large quizzes
+- **24 languages** — English, Hindi, Spanish, French, Arabic, Japanese, Gujarati and more
+- **Multi-difficulty** — Easy / Medium / Hard (mix-and-match)
+- **Sample topics** — One-click Black Holes, Python, WW2, Photosynthesis, ML
 
----
+### Export
+- **PDF (no answers)** — Clean printable quiz
+- **PDF + answer key** — Correct answers highlighted in green
+- **Word (no answers)** — .docx for easy editing
+- **Word + answer key** — .docx with answers marked
 
-## ✨ What It Does
+### Share & Collaborate
+- **Shareable link** — `/quiz/[id]` — anyone can take without signing up
+- **Public quiz page** — Name entry → take quiz → instant score + review
+- **Results dashboard** — `/results/[id]` — see all responses, scores, timestamps
+- **Copy quiz link** — One click to clipboard
 
-1. **Paste any text** — article, study notes, textbook excerpt
-2. **Or upload an image** — textbook page, handwritten notes, diagram, screenshot
-3. **Choose difficulty** (Easy / Medium / Hard) and number of questions
-4. **Get a full MCQ quiz** with 4 options per question
-5. **Play the quiz** with instant feedback and explanations
-6. **Review your score** with per-question breakdown
+### Authentication
+- **Email + password signup/login** — via NextAuth.js + bcryptjs
+- **My Quizzes dashboard** — all your created quizzes in one place
+- **Response stats** — total responses + avg score per quiz
+- **Delete quiz** — removes quiz + all responses
+- **Guest mode** — generate and take quizzes without signing up; sign in required to share
+
+### UX
+- **Searchable language dropdown** — 24 languages, type to filter
+- **Resizable textarea** — drag to expand content area
+- **Clear button** — one click to clear content
+- **Export close on Escape** — dropdown closes on Escape or click-outside
 
 ---
 
@@ -35,39 +52,52 @@ Output:        Interactive MCQ quiz → Score → Review with explanations
 | Layer       | Technology                          |
 |-------------|-------------------------------------|
 | Framework   | Next.js 14 (App Router)             |
-| Styling     | Tailwind CSS                        |
-| AI Engine   | Anthropic Claude API (Text + Vision)|
-| Fonts       | Playfair Display, DM Sans, DM Mono  |
-| Deployment  | Vercel                              |
+| Auth        | NextAuth.js v4 + bcryptjs           |
+| AI Engine   | Groq API — LLaMA 3.3 70B Versatile  |
+| Database    | MongoDB Atlas                        |
+| Styling     | Tailwind CSS                         |
+| Export      | jsPDF + docx                         |
+| Runtime     | Node.js ≥ 18                         |
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
-- Node.js `>= 18.17.0`
-- Anthropic API key → [console.anthropic.com](https://console.anthropic.com/)
+- Node.js `>= 18`
+- MongoDB Atlas account (free tier) → [mongodb.com/atlas](https://mongodb.com/atlas)
+- Groq API key (free) → [console.groq.com](https://console.groq.com)
 
 ### Installation
 
 ```bash
-# Clone
 git clone https://github.com/roshnithakor07/quizcraft.git
 cd quizcraft
-
-# Install
 npm install
-
-# Configure
 cp .env.example .env.local
-# → Add your ANTHROPIC_API_KEY in .env.local
-
-# Run
-npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+### Environment Variables
+
+```env
+# .env.local
+GROQ_API_KEY=gsk_your_key_here
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/quizcraft?retryWrites=true&w=majority
+NEXTAUTH_SECRET=generate-with-openssl-rand-base64-32
+NEXTAUTH_URL=http://localhost:3000
+```
+
+Generate `NEXTAUTH_SECRET`:
+```bash
+openssl rand -base64 32
+```
+
+### Run
+
+```bash
+npm run dev
+# Open http://localhost:3000
+```
 
 ---
 
@@ -78,140 +108,146 @@ quizcraft/
 │
 ├── app/
 │   ├── api/
-│   │   └── generate/
-│   │       └── route.js      # Claude API — quiz generation
-│   ├── globals.css           # Warm editorial theme
-│   ├── layout.js             # Root layout + metadata
-│   └── page.js               # Full UI (input → quiz → results)
+│   │   ├── auth/
+│   │   │   ├── [...nextauth]/route.js   ← NextAuth handler
+│   │   │   └── register/route.js        ← Signup endpoint
+│   │   ├── generate/route.js            ← Quiz generation (Groq, batching)
+│   │   ├── quiz/
+│   │   │   ├── route.js                 ← POST save quiz
+│   │   │   └── [id]/route.js            ← GET quiz + DELETE quiz
+│   │   ├── submit/route.js              ← Submit answers + save score
+│   │   └── results/[id]/route.js        ← GET all responses for a quiz
+│   │
+│   ├── quiz/[id]/
+│   │   ├── page.js                      ← Server component (fast load)
+│   │   └── TakeQuizClient.js            ← Client quiz UI
+│   │
+│   ├── results/[id]/
+│   │   ├── page.js                      ← Server component (auth protected)
+│   │   └── ResultsClient.js             ← Results dashboard UI
+│   │
+│   ├── dashboard/
+│   │   ├── page.js                      ← My quizzes (server, auth required)
+│   │   └── DashboardClient.js           ← Dashboard UI
+│   │
+│   ├── login/page.js                    ← Login page
+│   ├── register/page.js                 ← Signup page
+│   ├── providers.js                     ← SessionProvider wrapper
+│   ├── layout.js                        ← Root layout
+│   ├── globals.css
+│   └── page.js                          ← Home / generate page
 │
 ├── lib/
-│   └── constants.js          # Difficulties, counts, sample texts
+│   ├── mongodb.js                       ← DB connection
+│   ├── auth.js                          ← NextAuth config
+│   └── constants.js                     ← Languages, difficulties, samples
 │
 ├── .env.example
-├── .gitignore
-├── next.config.js
 ├── package.json
-├── tailwind.config.js
 └── README.md
+```
+
+---
+
+## 🗄️ MongoDB Collections
+
+```
+Database: quizcraft
+
+quizzes collection:
+  shareId, creatorId, creatorName, title, topic,
+  language, questions[], createdAt, expiresAt
+
+responses collection:
+  shareId, takerName, answers{}, score,
+  total, percentage, submittedAt
+
+users collection:
+  name, email, password (hashed), createdAt
 ```
 
 ---
 
 ## 🔌 API Reference
 
-### `POST /api/generate`
-
-Generates a quiz from text or image content.
-
-**Request Body**
-
+### `POST /api/generate` — Generate quiz
 ```json
-{
-  "text": "Paste your paragraph or article here...",
-  "imageBase64": "base64-encoded-image-string",
-  "imageMediaType": "image/jpeg",
-  "count": 5,
-  "difficulty": "medium"
-}
+{ "text": "...", "count": 10, "difficulty": "medium", "language": "English" }
 ```
 
-> `text` or `imageBase64` is required. Both can be provided together.
-
-**Response**
-
+### `POST /api/quiz` — Save quiz (requires auth to link to account)
 ```json
-{
-  "success": true,
-  "quiz": {
-    "title": "Black Holes in Space",
-    "topic": "Physics of black holes and event horizons",
-    "questions": [
-      {
-        "id": 1,
-        "question": "What is the boundary beyond which nothing can escape a black hole?",
-        "options": {
-          "A": "Schwarzschild radius",
-          "B": "Event horizon",
-          "C": "Photon sphere",
-          "D": "Singularity"
-        },
-        "answer": "B",
-        "explanation": "The event horizon is the boundary of no escape. The Schwarzschild radius defines its size, but the horizon itself is the actual boundary."
-      }
-    ]
-  }
-}
+{ "quiz": { "title": "...", "questions": [...] } }
 ```
 
-**Parameters**
+### `GET /api/quiz/[id]` — Get quiz by shareId
 
-| Field           | Type    | Required | Values                                    |
-|-----------------|---------|----------|-------------------------------------------|
-| `text`          | string  | Partial  | Any paragraph (min ~50 words recommended) |
-| `imageBase64`   | string  | Partial  | Base64-encoded image data                 |
-| `imageMediaType`| string  | No       | `image/jpeg`, `image/png`, `image/webp`   |
-| `count`         | number  | Yes      | `3`, `5`, `7`, `10`                       |
-| `difficulty`    | string  | Yes      | `easy`, `medium`, `hard`                  |
+### `DELETE /api/quiz/[id]` — Delete quiz (creator only)
 
----
+### `POST /api/submit` — Submit answers
+```json
+{ "shareId": "...", "takerName": "Roshni", "answers": {}, "questions": [...] }
+```
 
-## 🎯 Use Cases
+### `GET /api/results/[id]` — Get all responses (creator only)
 
-- **Students** — Quickly create practice quizzes from lecture notes or textbook pages
-- **Teachers** — Generate quiz drafts from lesson material in seconds
-- **Self-learners** — Test comprehension of any article or blog post
-- **Developers** — Learn how to build Claude Vision + Text AI apps
+### `POST /api/auth/register` — Create account
+```json
+{ "name": "Roshni", "email": "...", "password": "..." }
+```
 
 ---
 
-## ⚙️ Environment Variables
-
-| Variable            | Required | Description                   |
-|---------------------|----------|-------------------------------|
-| `ANTHROPIC_API_KEY` | ✅ Yes   | Your Anthropic Claude API key |
-
----
-
-## 🚢 Deployment
-
-### Vercel (one command)
+## 🚢 Deployment (Vercel)
 
 ```bash
-npm i -g vercel
-vercel
-# Set ANTHROPIC_API_KEY in Vercel dashboard → Settings → Environment Variables
+npm i -g vercel && vercel
+```
+
+Set these in Vercel → Settings → Environment Variables:
+```
+GROQ_API_KEY
+MONGODB_URI
+NEXTAUTH_SECRET
+NEXTAUTH_URL  ← your production URL e.g. https://quizcraft.vercel.app
 ```
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/roshnithakor07/quizcraft)
 
 ---
 
-## 🗺️ Roadmap
+## ✅ Completed Features
 
-- [ ] **PDF support** — Upload a PDF and generate quiz from any page
-- [ ] **Quiz history** — MongoDB + user accounts to save quizzes
-- [ ] **Share quiz** — Unique shareable link for each quiz
-- [ ] **Export** — Download quiz as PDF or CSV
-- [ ] **Timed mode** — Countdown timer per question
-- [ ] **Leaderboard** — Share your score with a link
-- [ ] **Multiple languages** — Generate quizzes in Hindi, Gujarati, etc.
+- [x] AI quiz generation from text (Groq LLaMA 3.3 70B)
+- [x] Up to 200 questions with auto-batching
+- [x] 24 languages with searchable dropdown
+- [x] Multi-difficulty selection
+- [x] Export PDF + Word (with/without answer key)
+- [x] Shareable quiz link
+- [x] Public quiz-taking page (no login needed)
+- [x] Response tracking + results dashboard
+- [x] Email/password auth (NextAuth + bcryptjs)
+- [x] My Quizzes dashboard
+- [x] Delete quiz
+- [x] Server-side rendering for fast page loads
+- [x] Image upload tab (with text extraction note)
+- [x] Sample topic chips
+- [x] Resizable content textarea
 
----
+## 🔮 Roadmap
 
-## 🤝 Contributing
-
-```bash
-git checkout -b feature/your-feature
-git commit -m "feat: add your feature"
-git push origin feature/your-feature
-# Open a Pull Request
-```
+- [ ] Google OAuth login
+- [ ] Quiz timer / time limit mode
+- [ ] PDF/image OCR (with OpenAI GPT-4o or Claude)
+- [ ] Quiz categories / tags
+- [ ] Public quiz discovery page
+- [ ] Leaderboard per quiz
 
 ---
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE)
 
 ---
 
@@ -219,9 +255,10 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 **Roshni Thakor** — Backend Engineer
 
-[![Portfolio](https://img.shields.io/badge/Portfolio-roshnithakor07.github.io-orange?style=flat-square)](https://roshnithakor07.github.io)
+[![Portfolio](https://img.shields.io/badge/Portfolio-roshnithakor07.github.io-purple?style=flat-square)](https://roshnithakor07.github.io)
 [![GitHub](https://img.shields.io/badge/GitHub-roshnithakor07-black?style=flat-square&logo=github)](https://github.com/roshnithakor07)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-roshnithakor07-blue?style=flat-square&logo=linkedin)](https://linkedin.com/in/roshnithakor07)
 
 ---
 
-*Built to make learning more interactive — one quiz at a time.*
+*Built to solve a real problem: creating and sharing quizzes from your own study material — fast.*

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
 import { DIFFICULTIES, COUNTS, LETTERS, LANGUAGES } from "../lib/constants";
 
 // ── Icons ─────────────────────────────────────────────────────────
@@ -415,6 +417,7 @@ function QuizScreen({ quiz, onFinish }) {
 
 // ── Main Page ─────────────────────────────────────────────────────
 export default function Home() {
+  const { data: session } = useSession();
   const [text,         setText]         = useState("");
   const [tab,          setTab]          = useState("text"); // text | image
   const [image,        setImage]        = useState(null);   // { base64, mediaType, preview, name }
@@ -502,18 +505,24 @@ export default function Home() {
   // ── Share ──────────────────────────────────────────────────────
   const handleShare = async () => {
     if (!quiz) return;
-    if (shareId) { setShowShare(true); return; } // already saved
+    if (!session) {
+      // Save quiz to sessionStorage so we can restore after login
+      sessionStorage.setItem("pendingQuiz", JSON.stringify(quiz));
+      window.location.href = "/login?next=share";
+      return;
+    }
+    if (shareId) { setShowShare(true); return; }
     setSharing(true);
     try {
       const res  = await fetch("/api/quiz", {
-        method:"POST", headers:{"Content-Type":"application/json"},
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quiz }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
       setShareId(data.shareId);
       setShowShare(true);
-    } catch(e) { alert("Failed to save quiz: "+e.message); }
+    } catch(e) { alert("Failed to save quiz: " + e.message); }
     finally { setSharing(false); }
   };
 
@@ -526,10 +535,38 @@ export default function Home() {
     <div className="min-h-screen relative z-10">
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 text-[var(--amber)] mb-4">
-            <Icons.Feather/><span className="font-serif text-2xl font-bold text-[var(--ink)]">QuizCraft</span>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2 text-[var(--amber)]">
+            <Icons.Feather/>
+            <span className="font-serif text-2xl font-bold text-[var(--ink)]">QuizCraft</span>
           </div>
+          <div className="flex items-center gap-2">
+            {session ? (
+              <>
+                <Link href="/dashboard"
+                  className="text-xs px-3 py-2 border border-[var(--border)] rounded-xl text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] transition-all">
+                  My quizzes
+                </Link>
+                <button onClick={() => signOut({ callbackUrl: "/" })}
+                  className="text-xs px-3 py-2 border border-[var(--border)] rounded-xl text-[var(--muted)] hover:border-red-300 hover:text-red-500 transition-all">
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login"
+                  className="text-xs px-3 py-2 border border-[var(--border)] rounded-xl text-[var(--muted)] hover:border-[var(--amber)] hover:text-[var(--ink)] transition-all">
+                  Sign in
+                </Link>
+                <Link href="/register"
+                  className="text-xs px-3 py-2 bg-[var(--ink)] text-[var(--paper)] rounded-xl hover:bg-[#2d2010] transition-all">
+                  Get started free
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="text-center mb-8">
           <p className="text-sm text-[var(--muted)]">Paste any text → AI generates a quiz · Share with anyone · Export PDF or Word</p>
         </div>
 
@@ -722,8 +759,8 @@ export default function Home() {
             {/* Share */}
             <button onClick={handleShare} disabled={sharing}
               className="flex items-center gap-1.5 text-xs text-[var(--amber)] border border-[var(--amber)]/40 bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-all">
-              {sharing?<Icons.Loader/>:<Icons.Share/>}
-              {sharing?"Saving…":"Share"}
+              {sharing ? <Icons.Loader/> : <Icons.Share/>}
+              {sharing ? "Saving…" : session ? "Share" : "Share (sign in)"}
             </button>
             <button onClick={handleNew} className="text-xs text-[var(--muted)] border border-[var(--border)] px-3 py-1.5 rounded-lg hover:border-[var(--amber)] transition-all">
               ← New quiz
@@ -745,7 +782,8 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <button onClick={handleShare} disabled={sharing}
               className="flex items-center gap-1.5 text-xs text-[var(--amber)] border border-[var(--amber)]/40 bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-all">
-              {sharing?<Icons.Loader/>:<Icons.Share/>}{sharing?"Saving…":"Share quiz"}
+              {sharing?<Icons.Loader/>:<Icons.Share/>}
+              {sharing ? "Saving…" : session ? "Share quiz" : "Share (sign in)"}
             </button>
           </div>
         </div>
